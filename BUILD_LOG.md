@@ -24,7 +24,7 @@ leaves may start once the tag exists): `freeze/mcp-tools`, `freeze/motion-engine
 - [x] P1-T3 · cursor · p1-t3-cursor · built-against n/a · tests pass · 2026-06-21
 - [x] P1-T4 · cursor · p1-t4-cursor · built-against n/a · tests pass · 2026-06-21
 - [x] P1-T5 · cursor · p1-t5-cursor · built-against freeze/mcp-tools @ 6c12f31 · tests pass · 2026-06-21
-- [ ] P1-T6 · orchestration agents (planner/authoring/variation)
+- [x] P1-T6 · cursor · p1-t6-cursor · built-against freeze/mcp-tools · tests pass · 2026-06-21
 - [ ] P1-T7 · input-moderation guardrail (checkpoint 1)
 - [ ] P1-T8 · generate_asset + safety pipeline
 - [ ] **PHASE 1 GATE**
