@@ -7,6 +7,7 @@ coverage/
 .DS_Store
 out/
 *.scene
+!renderer/spike/sample.scene
 *.zip
 __pycache__/
 .pytest_cache/
