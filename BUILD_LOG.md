@@ -13,7 +13,7 @@ leaves may start once the tag exists): `freeze/mcp-tools`, `freeze/motion-engine
 
 ## Phase 0 — De-risk
 - [x] P0-T1 · cursor · p0-t1-cursor · built-against n/a · tests pass · 2026-06-21
-- [ ] P0-T2 · CE.SDK authoring spike + capability-report.json
+- [x] P0-T2 · cursor · p0-t2-cursor · built-against n/a · tests pass · 2026-06-21
 - [ ] P0-T3 · build-time mapping agent
 - [ ] P0-T4 · render-path spike (settle exportVideo vs Renderer container)
 - [ ] **PHASE 0 GATE** — report findings; await go-ahead

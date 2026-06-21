@@ -1,0 +1,76 @@
+{
+  "briefs": [
+    {
+      "id": "launch-pop-headline",
+      "brief": "Bold product launch — headline pops in with energy",
+      "expected_intents": ["energetic_entrance"],
+      "expected_animation": "//ly.img.ubq/animation/pop"
+    },
+    {
+      "id": "logo-grow-subtle",
+      "brief": "Logo gently grows for subtle emphasis without distraction",
+      "expected_intents": ["subtle_emphasis"],
+      "expected_animation": "//ly.img.ubq/animation/grow"
+    },
+    {
+      "id": "price-hard-cut",
+      "brief": "Price update — hard cut, no smooth dissolve",
+      "expected_intents": ["hard_cut"],
+      "expected_animation": "//ly.img.ubq/animation/fade"
+    },
+    {
+      "id": "scene-crossfade",
+      "brief": "Soft crossfade between message beats",
+      "expected_intents": ["smooth_transition"],
+      "expected_animation": "//ly.img.ubq/animation/fade"
+    },
+    {
+      "id": "speed-blur-whoosh",
+      "brief": "Motion blur whoosh as element enters frame",
+      "expected_intents": ["motion_blur_whoosh"],
+      "expected_animation": "//ly.img.ubq/animation/blur"
+    },
+    {
+      "id": "cta-pulse-loop",
+      "brief": "CTA pulses continuously to hold attention",
+      "expected_intents": ["attention_loop"],
+      "expected_animation": "//ly.img.ubq/animation/pulsating_loop"
+    },
+    {
+      "id": "tagline-exit-fade",
+      "brief": "Tagline fades out cleanly at end card",
+      "expected_intents": ["exit"],
+      "expected_animation": "//ly.img.ubq/animation/fade"
+    },
+    {
+      "id": "hero-slide-in",
+      "brief": "Hero image slides in from left — energetic entrance",
+      "expected_intents": ["energetic_entrance"],
+      "expected_animation": "//ly.img.ubq/animation/pop"
+    },
+    {
+      "id": "badge-subtle-grow",
+      "brief": "Small badge scales up subtly on reveal",
+      "expected_intents": ["subtle_emphasis"],
+      "expected_animation": "//ly.img.ubq/animation/grow"
+    },
+    {
+      "id": "flash-sale-cut",
+      "brief": "Flash sale text snaps in — instant hard cut feel",
+      "expected_intents": ["hard_cut"],
+      "expected_animation": "//ly.img.ubq/animation/fade"
+    },
+    {
+      "id": "chapter-transition",
+      "brief": "Gentle fade between story chapters",
+      "expected_intents": ["smooth_transition"],
+      "expected_animation": "//ly.img.ubq/animation/fade"
+    },
+    {
+      "id": "swipe-blur-entry",
+      "brief": "Fast blur entrance for sports highlight reel",
+      "expected_intents": ["motion_blur_whoosh"],
+      "expected_animation": "//ly.img.ubq/animation/blur"
+    }
+  ]
+}

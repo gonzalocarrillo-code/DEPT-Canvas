@@ -1,0 +1,70 @@
+[
+  {
+    "intent": "energetic_entrance",
+    "animation_type": "//ly.img.ubq/animation/pop",
+    "params": {
+      "playback/duration": 0.6
+    },
+    "confidence": 0.92,
+    "needs_review": false
+  },
+  {
+    "intent": "subtle_emphasis",
+    "animation_type": "//ly.img.ubq/animation/grow",
+    "params": {
+      "playback/duration": 0.5,
+      "animationEasing": "EaseInOut"
+    },
+    "confidence": 0.88,
+    "needs_review": false
+  },
+  {
+    "intent": "hard_cut",
+    "animation_type": "//ly.img.ubq/animation/fade",
+    "params": {
+      "playback/duration": 0.15,
+      "animationEasing": "Linear"
+    },
+    "confidence": 0.85,
+    "needs_review": false
+  },
+  {
+    "intent": "smooth_transition",
+    "animation_type": "//ly.img.ubq/animation/fade",
+    "params": {
+      "playback/duration": 0.8,
+      "animationEasing": "EaseInOut"
+    },
+    "confidence": 0.7,
+    "needs_review": true
+  },
+  {
+    "intent": "motion_blur_whoosh",
+    "animation_type": "//ly.img.ubq/animation/blur",
+    "params": {
+      "playback/duration": 0.45,
+      "animationEasing": "EaseOut"
+    },
+    "confidence": 0.86,
+    "needs_review": false
+  },
+  {
+    "intent": "attention_loop",
+    "animation_type": "//ly.img.ubq/animation/pulsating_loop",
+    "params": {
+      "playback/duration": 1.2
+    },
+    "confidence": 0.9,
+    "needs_review": false
+  },
+  {
+    "intent": "exit",
+    "animation_type": "//ly.img.ubq/animation/fade",
+    "params": {
+      "playback/duration": 0.4,
+      "animationEasing": "EaseIn"
+    },
+    "confidence": 0.91,
+    "needs_review": false
+  }
+]

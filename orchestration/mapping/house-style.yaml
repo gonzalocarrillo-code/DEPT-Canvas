@@ -1,0 +1,63 @@
+# DEPT Canvas house-style rule sheet (designer-ratified defaults for mapping agent)
+
+defaults:
+  entrance_easing: EaseOut
+  exit_easing: EaseIn
+  emphasis_easing: EaseInOut
+  loop_easing: Linear
+  stagger_step_sec: 0.08
+  duration:
+    entrance_sec: 0.6
+    exit_sec: 0.4
+    emphasis_sec: 0.5
+    loop_sec: 1.2
+
+never_do:
+  - custom-bezier
+  - multi-keyframe-tracks
+  - group-animation
+  - scene-transitions
+
+intent_rules:
+  energetic_entrance:
+    animation_shorthand: pop
+    easing: EaseOutBack
+    duration_sec: 0.6
+    confidence: 0.92
+
+  subtle_emphasis:
+    animation_shorthand: grow
+    easing: EaseInOut
+    duration_sec: 0.5
+    confidence: 0.88
+
+  hard_cut:
+    animation_shorthand: fade
+    easing: Linear
+    duration_sec: 0.15
+    confidence: 0.85
+
+  smooth_transition:
+    animation_shorthand: fade
+    easing: EaseInOut
+    duration_sec: 0.8
+    confidence: 0.7
+    needs_review: true
+
+  motion_blur_whoosh:
+    animation_shorthand: blur
+    easing: EaseOut
+    duration_sec: 0.45
+    confidence: 0.86
+
+  attention_loop:
+    animation_shorthand: pulsating_loop
+    easing: Linear
+    duration_sec: 1.2
+    confidence: 0.9
+
+  exit:
+    animation_shorthand: fade
+    easing: EaseIn
+    duration_sec: 0.4
+    confidence: 0.91
