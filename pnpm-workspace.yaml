@@ -1,0 +1,7 @@
+packages:
+  - "scene-mcp"
+  - "renderer"
+  - "edge"
+  - "frontend"
+allowBuilds:
+  esbuild: true

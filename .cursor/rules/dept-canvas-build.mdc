@@ -1,0 +1,40 @@
+---
+description: DEPT Canvas build — invariants, two-tier motion rule, and execution protocol for all coding-agent work
+alwaysApply: true
+---
+
+# DEPT Canvas — always-on build rules
+
+**Read `BUILD_AGENT.md`, `CLAUDE.md`, and `IMPLEMENTATION_PLAN.md` before writing code.** They are the
+operating contract, project rules, and build queue. Execute tasks in strict Task ID order
+(P0-T1 … P4-T4); do not skip Phase 0. (`AGENTS.md` at the root is a product *domain doc*, not
+instructions for you.)
+
+## Hard invariants (never violate)
+1. AI authors **editable scenes, never baked video** (generated media = a fill on a block).
+2. **Locks are enforced in code**: a write to a locked property hard-fails + writes an audit record —
+   for `set_properties` and every `MotionEngine` op. Never rely on prompting.
+3. **Read engine truth** via `findAllProperties()`/`query_animatable`; never hardcode CE.SDK
+   property/animation/easing strings from memory.
+4. **Tenant isolation**: resolve `tenant_id` server-side from the scoped token, never an argument.
+5. **No destructive tools** (no delete/publish/permission-change). Never add one.
+6. **Generate-once / render-many**: never re-call a generation model per aspect ratio.
+7. **Two motion tiers, one interface. CE.SDK is PRESET-BASED, not a keyframe system.** Build only Tier 1
+   (`MotionEngine` interface + `CesdkMotionEngine`, preset composition; label results `native`/`composed`).
+   **No `set_keyframe`/custom-bezier/transition tooling on CE.SDK.** Over-capability requests return a
+   **"Tier 2 candidate" signal** (+ increment the metric) — never silently fake it. Agents/tools import
+   the **`MotionEngine` interface only**, never `@cesdk/node`/`CesdkMotionEngine`. **Do NOT build Tier 2
+   (`RemotionMotionEngine`, task D-T1)** — it is deferred behind a usage trigger.
+
+## Protocol (full detail in `BUILD_AGENT.md`)
+- Per task: read the plan entry + its governing doc → re-verify any **MUST VERIFY** fact against the live
+  doc URL in plan §F → implement the listed files/signatures → write the named acceptance tests → run
+  `pnpm -r typecheck && pnpm -r test` / `uv run pytest` to green → commit on branch `<taskid>-cursor` →
+  log in `BUILD_LOG.md` → report and continue.
+- **STOP at phase gates** (after Phase 0, then after each phase) and report; implement human-approval
+  gates as native HITL pauses.
+- When blocked or unsure about an API: STOP and ask — never invent an API surface.
+- Coordination with Codex: you own the spine packages (`scene-mcp/`, `orchestration/`, `renderer/`).
+  Mark interface freezes with a `freeze/<interface>` git tag + a `BUILD_LOG.md` note so Codex can start
+  dependent `frontend/` and `infra/` leaves. Never edit a leaf package Codex owns; resolve conflicts in
+  packages you own. (See `BUILD_AGENT.md` §8.)
