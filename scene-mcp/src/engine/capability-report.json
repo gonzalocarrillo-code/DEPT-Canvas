@@ -1,0 +1,2006 @@
+{
+  "cesdkVersion": "1.76.1",
+  "generatedAt": "2026-06-21T23:36:50.007Z",
+  "hasKeyframeApi": false,
+  "animationEasing": [
+    "Linear",
+    "EaseIn",
+    "EaseOut",
+    "EaseInOut",
+    "EaseInQuart",
+    "EaseOutQuart",
+    "EaseInOutQuart",
+    "EaseInQuint",
+    "EaseOutQuint",
+    "EaseInOutQuint",
+    "EaseInBack",
+    "EaseOutBack",
+    "EaseInOutBack",
+    "EaseInSpring",
+    "EaseOutSpring",
+    "EaseInOutSpring"
+  ],
+  "animationTypes": [
+    {
+      "type": "//ly.img.ubq/animation/slide",
+      "shorthand": "slide",
+      "properties": [
+        {
+          "key": "animation/slide/direction",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/slide/fade",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationOverlap",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationWritingStyle",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Block",
+            "Line",
+            "Character",
+            "Word"
+          ]
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/pan",
+      "shorthand": "pan",
+      "properties": [
+        {
+          "key": "animation/pan/direction",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/pan/distance",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/pan/fade",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationOverlap",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationWritingStyle",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Block",
+            "Line",
+            "Character",
+            "Word"
+          ]
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/fade",
+      "shorthand": "fade",
+      "properties": [
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationOverlap",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationWritingStyle",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Block",
+            "Line",
+            "Character",
+            "Word"
+          ]
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/blur",
+      "shorthand": "blur",
+      "properties": [
+        {
+          "key": "animation/blur/fade",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/blur/intensity",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationOverlap",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationWritingStyle",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Block",
+            "Line",
+            "Character",
+            "Word"
+          ]
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/grow",
+      "shorthand": "grow",
+      "properties": [
+        {
+          "key": "animation/grow/direction",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Horizontal",
+            "Vertical",
+            "All",
+            "TopLeft",
+            "TopRight",
+            "BottomLeft",
+            "BottomRight"
+          ]
+        },
+        {
+          "key": "animation/grow/scaleFactor",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationOverlap",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationWritingStyle",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Block",
+            "Line",
+            "Character",
+            "Word"
+          ]
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/zoom",
+      "shorthand": "zoom",
+      "properties": [
+        {
+          "key": "animation/zoom/fade",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationOverlap",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationWritingStyle",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Block",
+            "Line",
+            "Character",
+            "Word"
+          ]
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/pop",
+      "shorthand": "pop",
+      "properties": [
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationOverlap",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationWritingStyle",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Block",
+            "Line",
+            "Character",
+            "Word"
+          ]
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/wipe",
+      "shorthand": "wipe",
+      "properties": [
+        {
+          "key": "animation/wipe/direction",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Up",
+            "Right",
+            "Down",
+            "Left"
+          ]
+        },
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationOverlap",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationWritingStyle",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Block",
+            "Line",
+            "Character",
+            "Word"
+          ]
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/baseline",
+      "shorthand": "baseline",
+      "properties": [
+        {
+          "key": "animation/baseline/direction",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Up",
+            "Right",
+            "Down",
+            "Left"
+          ]
+        },
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationOverlap",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationWritingStyle",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Block",
+            "Line",
+            "Character",
+            "Word"
+          ]
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/crop_zoom",
+      "shorthand": "crop_zoom",
+      "properties": [
+        {
+          "key": "animation/crop_zoom/fade",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/crop_zoom/scale",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/spin",
+      "shorthand": "spin",
+      "properties": [
+        {
+          "key": "animation/spin/direction",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Clockwise",
+            "CounterClockwise"
+          ]
+        },
+        {
+          "key": "animation/spin/fade",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/spin/intensity",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationOverlap",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationWritingStyle",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Block",
+            "Line",
+            "Character",
+            "Word"
+          ]
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/spin_loop",
+      "shorthand": "spin_loop",
+      "properties": [
+        {
+          "key": "animation/spin_loop/direction",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Clockwise",
+            "CounterClockwise"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/fade_loop",
+      "shorthand": "fade_loop",
+      "properties": [
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/blur_loop",
+      "shorthand": "blur_loop",
+      "properties": [
+        {
+          "key": "animation/blur_loop/intensity",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/pulsating_loop",
+      "shorthand": "pulsating_loop",
+      "properties": [
+        {
+          "key": "animation/pulsating_loop/intensity",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/breathing_loop",
+      "shorthand": "breathing_loop",
+      "properties": [
+        {
+          "key": "animation/breathing_loop/intensity",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/jump_loop",
+      "shorthand": "jump_loop",
+      "properties": [
+        {
+          "key": "animation/jump_loop/direction",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Up",
+            "Right",
+            "Down",
+            "Left"
+          ]
+        },
+        {
+          "key": "animation/jump_loop/intensity",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/squeeze_loop",
+      "shorthand": "squeeze_loop",
+      "properties": [
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/sway_loop",
+      "shorthand": "sway_loop",
+      "properties": [
+        {
+          "key": "animation/sway_loop/intensity",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/scale_loop",
+      "shorthand": "scale_loop",
+      "properties": [
+        {
+          "key": "animation/scale_loop/direction",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Horizontal",
+            "Vertical",
+            "All",
+            "TopLeft",
+            "TopRight",
+            "BottomLeft",
+            "BottomRight"
+          ]
+        },
+        {
+          "key": "animation/scale_loop/easingDuration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/scale_loop/endScale",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/scale_loop/holdDuration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/scale_loop/startDelay",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/scale_loop/startScale",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/typewriter_text",
+      "shorthand": "typewriter_text",
+      "properties": [
+        {
+          "key": "animation/typewriter_text/writingStyle",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Character",
+            "Word"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/block_swipe_text",
+      "shorthand": "block_swipe_text",
+      "properties": [
+        {
+          "key": "animation/block_swipe_text/blockColor",
+          "type": "Color",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/block_swipe_text/direction",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Up",
+            "Right",
+            "Down",
+            "Left"
+          ]
+        },
+        {
+          "key": "animation/block_swipe_text/useTextColor",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationOverlap",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "textAnimationWritingStyle",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Block",
+            "Line",
+            "Character",
+            "Word"
+          ]
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/spread_text",
+      "shorthand": "spread_text",
+      "properties": [
+        {
+          "key": "animation/spread_text/fade",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/spread_text/intensity",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/merge_text",
+      "shorthand": "merge_text",
+      "properties": [
+        {
+          "key": "animation/merge_text/direction",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Right",
+            "Left"
+          ]
+        },
+        {
+          "key": "animation/merge_text/intensity",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/animation/ken_burns",
+      "shorthand": "ken_burns",
+      "properties": [
+        {
+          "key": "animation/ken_burns/direction",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Up",
+            "Right",
+            "Down",
+            "Left"
+          ]
+        },
+        {
+          "key": "animation/ken_burns/fade",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/ken_burns/travelDistanceRatio",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animation/ken_burns/zoomIntensity",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "animationEasing",
+          "type": "Enum",
+          "readable": true,
+          "writable": true,
+          "enumValues": [
+            "Linear",
+            "EaseIn",
+            "EaseOut",
+            "EaseInOut",
+            "EaseInQuart",
+            "EaseOutQuart",
+            "EaseInOutQuart",
+            "EaseInQuint",
+            "EaseOutQuint",
+            "EaseInOutQuint",
+            "EaseInBack",
+            "EaseOutBack",
+            "EaseInOutBack",
+            "EaseInSpring",
+            "EaseOutSpring",
+            "EaseInOutSpring"
+          ]
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "playback/duration",
+          "type": "Double",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    }
+  ],
+  "blurTypes": [
+    {
+      "type": "//ly.img.ubq/blur/uniform",
+      "shorthand": "uniform",
+      "properties": [
+        {
+          "key": "blur/uniform/intensity",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/blur/linear",
+      "shorthand": "linear",
+      "properties": [
+        {
+          "key": "blur/linear/blurRadius",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/linear/x1",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/linear/x2",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/linear/y1",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/linear/y2",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/blur/mirrored",
+      "shorthand": "mirrored",
+      "properties": [
+        {
+          "key": "blur/mirrored/blurRadius",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/mirrored/gradientSize",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/mirrored/size",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/mirrored/x1",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/mirrored/x2",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/mirrored/y1",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/mirrored/y2",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    },
+    {
+      "type": "//ly.img.ubq/blur/radial",
+      "shorthand": "radial",
+      "properties": [
+        {
+          "key": "blur/radial/blurRadius",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/radial/gradientRadius",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/radial/radius",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/radial/x",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "blur/radial/y",
+          "type": "Float",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "includedInExport",
+          "type": "Bool",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "name",
+          "type": "String",
+          "readable": true,
+          "writable": true
+        },
+        {
+          "key": "type",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        },
+        {
+          "key": "uuid",
+          "type": "String",
+          "readable": true,
+          "writable": false
+        }
+      ]
+    }
+  ],
+  "fillColorKey": "fill/solid/color"
+}
