@@ -1,0 +1,79 @@
+import type { z } from "zod";
+import type { ToolRegistration } from "../server.js";
+import type { CallerContext } from "../auth/tenant-context.js";
+import { createScene } from "./create-scene.js";
+import { createBlock } from "./create-block.js";
+import { setProperties } from "./set-properties.js";
+import { applyBrandKit } from "./apply-brand-kit.js";
+import { applyLockManifest } from "./apply-lock-manifest.js";
+import { saveScene } from "./save-scene.js";
+import {
+  ApplyBrandKitInput,
+  ApplyLockManifestInput,
+  CreateBlockInput,
+  CreateSceneInput,
+  SaveSceneInput,
+  SetPropertiesInput,
+} from "./_schemas.js";
+import { FORBIDDEN_TOOL_NAMES } from "./save-scene.js";
+
+export type ToolContextResolver = () => CallerContext;
+
+let contextResolver: ToolContextResolver = () => ({
+  tenantId: "dev-tenant",
+  userId: "dev-user",
+  role: "creator",
+});
+
+export function setToolContextResolver(resolver: ToolContextResolver): void {
+  contextResolver = resolver;
+}
+
+function wrapTool<S extends z.ZodObject<z.ZodRawShape>>(
+  name: string,
+  schema: S,
+  handler: (ctx: CallerContext, input: z.infer<S>) => Promise<unknown>,
+): ToolRegistration {
+  return {
+    name,
+    description: `DEPT Canvas tool: ${name}`,
+    inputSchema: schema.shape,
+    handler: async (input) => {
+      const ctx = contextResolver();
+      const parsed = schema.parse(input);
+      const result = await handler(ctx, parsed);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result) }],
+        structuredContent: result as Record<string, unknown>,
+      };
+    },
+  };
+}
+
+export function buildCoreTools(): ToolRegistration[] {
+  return [
+    wrapTool("create_scene", CreateSceneInput, createScene),
+    wrapTool("create_block", CreateBlockInput, createBlock),
+    wrapTool("set_properties", SetPropertiesInput, setProperties),
+    wrapTool("apply_brand_kit", ApplyBrandKitInput, applyBrandKit),
+    wrapTool("apply_lock_manifest", ApplyLockManifestInput, applyLockManifest),
+    wrapTool("save_scene", SaveSceneInput, saveScene),
+  ];
+}
+
+export function assertNoForbiddenTools(toolNames: string[]): void {
+  for (const forbidden of FORBIDDEN_TOOL_NAMES) {
+    if (toolNames.includes(forbidden)) {
+      throw new Error(`Forbidden tool registered: ${forbidden}`);
+    }
+  }
+}
+
+export const CORE_TOOL_NAMES = [
+  "create_scene",
+  "create_block",
+  "set_properties",
+  "apply_brand_kit",
+  "apply_lock_manifest",
+  "save_scene",
+] as const;

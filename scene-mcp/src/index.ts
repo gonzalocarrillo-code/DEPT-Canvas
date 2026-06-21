@@ -1,6 +1,7 @@
 import express from "express";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { createMcpServer } from "./server.js";
+import { buildCoreTools } from "./tools/registry.js";
 import { McpSessionStore } from "./http/session-store.js";
 import { mountMcpRoutes } from "./http/mcp-router.js";
 
@@ -21,7 +22,7 @@ export function createSceneMcpApp(options: SceneMcpHttpOptions = {}) {
   });
 
   app.use(express.json({ limit: "4mb" }));
-  mountMcpRoutes(app, () => createMcpServer(), sessions);
+  mountMcpRoutes(app, () => createMcpServer(buildCoreTools()), sessions);
 
   return { app, sessions };
 }
