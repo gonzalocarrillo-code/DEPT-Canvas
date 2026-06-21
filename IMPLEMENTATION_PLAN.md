@@ -63,7 +63,8 @@ per-client siloed data plane (dedicated renderer, DB, storage), hosted on GCP.
     `exportVideo()` conflict in §B.2).
 - **`MotionEngine` interface (DEPT-built swap-seam) + two tiers** (`MOTION_ENGINE.md`, principle #7):
   - **Tier 1 — Scale: `CesdkMotionEngine`** — translates motion intents into CE.SDK **preset composition**
-    (In/Out/Loop presets + staggers + the four easing enums). **Build now.** Flat SDK licence, no
+    (In/Out/Loop presets + staggers + the engine's easing enum — 16 on v1.76.1, incl. Back/Spring).
+    **Build now.** Flat SDK licence, no
     per-render fee → ideal for high-volume on-brand variation.
   - **Tier 2 — Craft: `RemotionMotionEngine`** — true keyframes + cubic-bezier + spring (Remotion
     `interpolate`/`Easing.bezier`/`spring`). **Validated but DEFERRED**; built only when the trigger in
@@ -134,15 +135,16 @@ dept-canvas/                 # repository root (this folder)
 - **Still/PDF export** `engine.block.export(block, { mimeType }): Promise<Blob>` —
   `image/png|jpeg|webp`, `image/svg+xml`, `application/pdf`, `application/octet-stream`.
 
-### B.2 Server-side MP4 — one open conflict to settle in P0-T4
-Two sources disagree: (a) an IMG.LY guide states `@cesdk/node` **cannot encode video** and server-side MP4
-must use the separate **CE.SDK Renderer** container (native Linux, Ubuntu 24.04, GPU/EGL via NVIDIA
-Container Toolkit; licensed-codec variants for H.264/H.265/AAC); (b) a later source documents
-`engine.block.exportVideo()` (H.264 MP4 + QuickTime, framerate/bitrate options) **on the Node engine**.
-**Resolve empirically in P0-T4** on the pinned version: if `exportVideo()` works in Node, use it; else
-route MP4 through the Renderer container. Either way this defines the `renderer/` boundary and is why
-`GCP.md` separates the workload shapes. (Sources: `img.ly/docs/cesdk/renderer/get-started/…`,
-`…/node/export-save-publish/…`.)
+### B.2 Server-side MP4 — RESOLVED in P0-T4: Node cannot encode video; use the Renderer container
+**Empirically confirmed on v1.76.1 (P0-T4):** `engine.block.exportVideo()` exists in `index.d.ts` but the
+Node/WASM runtime **rejects it at call time** with `"Exporting video is currently not supported on
+Node.JS"`. So: **stills/JPEG/PDF render via `@cesdk/node` (CPU); MP4 (H.264) MUST route through the CE.SDK
+Renderer container** (`docker.io/imgly/cesdk-renderer:1.76.1`, native Linux Ubuntu 24.04, GPU/EGL via
+NVIDIA Container Toolkit; licensed-codec variant required for H.264/H.265/AAC) → Cloud Run CPU for stills,
+Cloud Run GPU → GKE for MP4. **Still-open:** the container path was documented but **not exercised
+end-to-end** (no `CESDK_LICENSE`/Docker creds in the spike env) — validate it with a license + `ffprobe`
+H.264 check inside P2-T4 before relying on it. (Sources: `img.ly/docs/cesdk/renderer/get-started/…`,
+`renderer/spike/render-spike.md`.)
 
 ### B.3 The four `ANIMATION.md` capability questions — **CLOSED: refuted as native** (the answer is the two-tier strategy)
 CE.SDK's programmatic animation API is a **closed named-preset model**, confirmed against the live docs.
@@ -152,32 +154,34 @@ CE.SDK's programmatic animation API is a **closed named-preset model**, confirme
 | # (`ANIMATION.md` §"Phase 0") | Answer | Evidence |
 |---|---|---|
 | **Q1** Arbitrary multi-keyframe sequences per property? | **NO.** Only `engine.block.createAnimation(type)` + one `setInAnimation`/`setLoopAnimation`/`setOutAnimation` per block; tune via `setDuration` + per-preset `setFloat`/`setEnum`. No `setKeyframe`/`addKeyframe` exists. | `img.ly/docs/cesdk/engine/guides/using-animations/` |
-| **Q2** Per-keyframe custom cubic-bezier easing? | **NO.** Easing is one enum `animationEasing` ∈ `{Linear, EaseIn, EaseOut, EaseInOut}`. No bezier/control points. | `…/animation/create/base-0fc5c4/` |
+| **Q2** Per-keyframe custom cubic-bezier easing? | **NO custom bezier / no per-keyframe easing.** Easing is a fixed enum on the preset — but P0-T2 found it has **16 values** on v1.76.1 (Linear/EaseIn/EaseOut/EaseInOut **plus Quart/Quint/Back/Spring variants**), not 4. So **overshoot/spring-feel IS reachable on Tier 1** via Back/Spring easing — you just can't supply control points. Read the list live; never hardcode 4. | `…/animation/create/base-0fc5c4/` + `capability-report.json` |
 | **Q3** Nested groups animated as a unit? | **NO.** Groups exist (`group`/`ungroup`, `//ly.img.ubq/group`, transforms cascade) but **"not available when editing videos,"** and animation is gated by `supportsAnimation(block)` (graphic-with-fill / text / shape-with-fill only). | `…/node/create-composition/group-and-ungroup-62565a/` |
 | **Q4** Scene-to-scene transitions? | **NO native primitive.** Hierarchy `Scene > Page > Track > Clip`; no `setTransition`/transition block type. | `…/js/create-video/timeline-editor-912252/` |
 
 **Consequence (the build rule):** On **Tier 1**, motion = **composition of CE.SDK presets** + staggers
-(time offsets) + the four easings, exposed only through the `MotionEngine` interface. Every result is
-labeled **`native`** (one preset) or **`composed`** (presets combined to approximate an intent). When a
-requested intent needs true keyframes / custom curves / group animation / transitions, the engine returns
-a **"Tier 2 candidate" signal** (and increments the trigger metric) — it does **not** silently fake it.
-**Confirmed preset vocabulary (re-derive at build time, never hardcode):** In/Out `slide, fade, blur,
-grow, zoom, pop, wipe, pan, baseline, spin`; loops `spin_loop, fade_loop, blur_loop, pulsating_loop,
-breathing_loop, jump_loop, squeeze_loop, sway_loop`; text writing modes `Line|Word|Character` (the
-"typewriter" effect = Character mode; there is no `typewriter`/`ken burns` type — compose from
-`pan`/`zoom`/`grow`). The blur **effect** subsystem (uniform/linear/mirrored/radial) is separate from the
-`blur` animation preset — **MUST VERIFY** `createBlur`/`BlurType` names before use.
+(time offsets) + the engine's easing enum, exposed only through the `MotionEngine` interface. Every result
+is labeled **`native`** (one preset) or **`composed`** (presets combined to approximate an intent). When a
+requested intent needs true multi-keyframe tracks / custom-control-point bezier / group animation /
+transitions, the engine returns a **"Tier 2 candidate" signal** (and increments the trigger metric) — it
+does **not** silently fake it. **NOTE (P0-T2 ground truth, v1.76.1):** the engine ships **25 named
+animation presets** — In/Out `slide, pan, fade, blur, grow, zoom, pop, wipe, baseline, crop_zoom, spin`,
+**`ken_burns`** (it IS a real type — do not "compose from pan/zoom"), 9 loop variants, and 5 text presets —
+and a **16-value** `animationEasing` enum (incl. Back/Spring). **Always re-derive both lists from
+`capability-report.json`/`query_animatable`; never hardcode them.** The blur **effect** subsystem (uniform/
+linear/mirrored/radial) is confirmed separate from the `blur` animation preset.
 
 ### B.4 CE.SDK introspection & authoring API — confirmed (the `query_animatable` ground truth)
-- `engine.block.findAllProperties(id): string[]` (category-prefixed keys, e.g. `'fill/color/value'`,
+- `engine.block.findAllProperties(id): string[]` (category-prefixed keys, e.g. `'fill/solid/color'`,
   `'text/text'`, `'animation/slide/direction'`); works on blocks, fills, effects, **and animation blocks**.
 - Typed accessors `getString/setString`, `getFloat/setFloat`, `getBool/setBool`, `getEnum/setEnum`,
   `getColor/setColor`; metadata `getPropertyType(property)`, `isPropertyReadable/Writable`,
   `getEnumValues(property)`; discovery `findByType`, `findByKind`, `findAllSelected`.
 - Type vs kind: `getType(id)` → immutable `//ly.img.ubq/…`; `getKind/setKind` → mutable tag. Images/shapes
   are **graphic blocks** with an image fill / a shape.
-- Fills: `createFill('image'|'color'|…)`, `getFill/setFill/supportsFill`. Solid colour key
-  **`'fill/color/value'`** (RGBA 0..1) — **MUST VERIFY** vs legacy `'fill/solid/color'`. Image fill:
+- Fills: `createFill('image'|'color'|…)`, `getFill/setFill/supportsFill`. **RESOLVED (P0-T2, v1.76.1):**
+  the solid colour key is **`'fill/solid/color'`** (RGBA 0..1) — **not** `'fill/color/value'`. Use
+  `'fill/solid/color'` in `set_properties`, brand-colour writes, and the brand-colour lock check (or
+  better, derive it from `findAllProperties`/`capability-report.json` — never hardcode). Image fill:
   `setString(fill,'fill/image/imageFileURI', url)` then `setFill(graphic, fill)`.
 - Text: `create('text')` + `replaceText(block, text)`; key `'text/text'`. Typography: `setTypeface`,
   `setFont`. Shapes: likely `createShape(type)`/`setShape` — **MUST VERIFY**. `getPropertyType` return
@@ -360,8 +364,9 @@ Complexity (S/M/L) · Biggest risk.**
   function queryAnimatable(engine, blockId): { properties:{key:string;type:string;enumValues?:string[]}[];
     easingOptions:string[]; animationTypes:{type:string;properties:{...}[]}[] };  // live, not constant
   ```
-- **Depends on:** P0-T2, P1-T1. **Acceptance:** `engine-wrapper.test.ts` — writes `'fill/color/value'`, reads
-  it back equal; `queryAnimatable` returns the four easings + ≥1 animation type **from the engine**.
+- **Depends on:** P0-T2, P1-T1. **Acceptance:** `engine-wrapper.test.ts` — writes `'fill/solid/color'`, reads
+  it back equal; `queryAnimatable` returns the engine's easing enum (16 on v1.76.1) + ≥1 animation type
+  **from the engine** (not a hardcoded list).
 - **Governing doc:** `CESDK.md`. **Complexity:** L. **Risk:** memory per job — cap concurrent jobs, dispose on
   save/timeout.
 
@@ -521,7 +526,8 @@ Complexity (S/M/L) · Biggest risk.**
   authoring so presets/easings are engine truth (`ANIMATION.md`). Every motion write routes through the lock
   choke point (P2-T1).
 - **Depends on:** P2-T1, P0-T2 (capability report), P0-T3 (intent map). **Acceptance:** `motion-engine.test.ts`
-  — `capabilities()` reports `keyframeTracks:false`/`customBezier:false` + the four easings;
+  — `capabilities()` reports `keyframeTracks:false`/`customBezier:false` and the engine's **actual** easing
+  enum read live from `capability-report.json` (16 on v1.76.1, incl. Back/Spring — NOT hardcoded to 4);
   `apply_intent('energetic_entrance')` returns `realizedAs:'native'|'composed'` and applies a real preset;
   a request needing custom bezier / group animation / a transition returns a **`tier2Candidate`** signal and
   the metric increments (`tier2_candidate_signalled_not_faked`); a motion op on a **locked** property is
@@ -546,8 +552,11 @@ Complexity (S/M/L) · Biggest risk.**
 
 #### P2-T4 — `render_variant` tool + renderer worker (Prompt 7, render path)
 - **Goal:** `render_variant` enqueues an async job (Cloud Tasks) consumed by `renderer/`; rendering goes
-  through `MotionEngine.render()`. Stills/PDF via `@cesdk/node`; **MP4 via `exportVideo()` or the CE.SDK
-  Renderer container** (per P0-T4). Writes only to the tenant bucket.
+  through `MotionEngine.render()`. Stills/JPEG/PDF via `@cesdk/node` (CPU); **MP4 ONLY via the CE.SDK
+  Renderer container** (`docker.io/imgly/cesdk-renderer:1.76.1`, GPU/EGL) — `exportVideo()` is rejected in
+  Node (P0-T4 confirmed), so there is no native-Node MP4 path. **First action in this task:** validate the
+  container path end-to-end with a real `CESDK_LICENSE` + `ffprobe` H.264 check (P0-T4 documented it but did
+  not exercise it). Writes only to the tenant bucket.
 - **Files:** `scene-mcp/src/tools/render-variant.ts`, `renderer/src/worker.ts`, `renderer/src/cesdk-render.ts`,
   `renderer/Dockerfile`, `renderer/tests/render-worker.test.ts`.
 - **Interfaces:**
@@ -778,12 +787,14 @@ Complexity (S/M/L) · Biggest risk.**
      `https://github.com/modelcontextprotocol/typescript-sdk` (pin v1.x via `npm view @modelcontextprotocol/sdk version`).
    - OpenAI models/APIs: `https://developers.openai.com/api/docs/models` and `…/guides/{image-generation,structured-outputs,moderation,your-data}`.
    - Remotion (only when D-T1 unlocks): `https://www.remotion.dev/docs/` + `https://www.remotion.dev/license`.
-6. **Every "MUST VERIFY" item — confirm before coding that part:** (a) §B.2 `exportVideo()`-in-Node vs Renderer
-   container; (b) §B.4 colour key `'fill/color/value'` vs legacy, `getPropertyType` union, `findByName`,
-   `createShape`/`setShape` + shape types, blur-effect (`createBlur`/`BlurType`) names; (c) §B.5 exact
-   `Runner.run` kwargs and handoff-level `needs_approval`; (d) §B.6 pin `@modelcontextprotocol/sdk` v1.x (not the
-   v2 alpha); (e) §B.7 `gpt-image-2` on `/v1/images/edits` (else `gpt-image-1.5`), and that char caps need a
-   code-side validate-and-retry loop.
+6. **"MUST VERIFY" items — status after Phase 0:** (a) §B.2 `exportVideo()`-in-Node — **RESOLVED**: rejected
+   in Node, MP4 = Renderer container only; (b) §B.4 solid-colour key — **RESOLVED**: `'fill/solid/color'` on
+   v1.76.1 (not `'fill/color/value'`); easing enum — **RESOLVED**: 16 values incl. Back/Spring. **Still open,
+   confirm before the relevant task:** `getPropertyType` union, `findByName`, `createShape`/`setShape` + shape
+   types, blur-effect (`createBlur`/`BlurType`) names (§B.4); §B.5 exact `Runner.run` kwargs and handoff-level
+   `needs_approval`; §B.6 pin `@modelcontextprotocol/sdk` v1.x (not the v2 alpha); §B.7 `gpt-image-2` on
+   `/v1/images/edits` (else `gpt-image-1.5`), and that char caps need a code-side validate-and-retry loop;
+   §B.2 the Renderer **container** path still needs an end-to-end license + `ffprobe` validation in P2-T4.
 7. **Hard product invariants (never violate):** AI authors editable scenes not baked video; locks enforced in
    code + audited; `tenant_id` server-side only; no delete/publish/permission tools; generate-once/render-many;
    engine facts read live; **two tiers behind one interface, CE.SDK never described or used as a keyframe engine.**
