@@ -19,8 +19,8 @@ leaves may start once the tag exists): `freeze/mcp-tools`, `freeze/motion-engine
 - [x] **PHASE 0 GATE** — report findings; await go-ahead · 2026-06-21
 
 ## Phase 1 — MCP server & agents
-- [ ] P1-T1 · scene-mcp Streamable HTTP skeleton
-- [ ] P1-T2 · CE.SDK engine wrapper + job registry + query_animatable
+- [x] P1-T1 · cursor · p1-t1-cursor · built-against n/a · tests pass · 2026-06-21
+- [x] P1-T2 · cursor · p1-t2-cursor · built-against n/a · tests pass · 2026-06-21
 - [ ] P1-T3 · auth, tenant scoping, RBAC
 - [ ] P1-T4 · immutable audit writer
 - [ ] P1-T5 · core MCP tools  → set `freeze/mcp-tools`
