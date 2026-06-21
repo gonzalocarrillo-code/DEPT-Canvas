@@ -7,11 +7,13 @@ import { setProperties } from "./set-properties.js";
 import { applyBrandKit } from "./apply-brand-kit.js";
 import { applyLockManifest } from "./apply-lock-manifest.js";
 import { saveScene } from "./save-scene.js";
+import { generateAsset } from "./generate-asset.js";
 import {
   ApplyBrandKitInput,
   ApplyLockManifestInput,
   CreateBlockInput,
   CreateSceneInput,
+  GenerateAssetInput,
   SaveSceneInput,
   SetPropertiesInput,
 } from "./_schemas.js";
@@ -58,6 +60,7 @@ export function buildCoreTools(): ToolRegistration[] {
     wrapTool("apply_brand_kit", ApplyBrandKitInput, applyBrandKit),
     wrapTool("apply_lock_manifest", ApplyLockManifestInput, applyLockManifest),
     wrapTool("save_scene", SaveSceneInput, saveScene),
+    wrapTool("generate_asset", GenerateAssetInput, generateAsset),
   ];
 }
 
@@ -76,4 +79,5 @@ export const CORE_TOOL_NAMES = [
   "apply_brand_kit",
   "apply_lock_manifest",
   "save_scene",
+  "generate_asset",
 ] as const;

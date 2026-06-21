@@ -89,6 +89,30 @@ export const SaveSceneOutput = z.object({
   sceneRef: z.string(),
 });
 
+export const GenerateAssetInput = z.object({
+  jobId: z.string(),
+  targetBlockId: z.number().int().optional(),
+  assetType: z.enum(["copy", "image", "background"]),
+  prompt: z.string(),
+  tone: z.array(z.string()).optional(),
+  characterLimit: z.number().int().optional(),
+  negativeKeywords: z.array(z.string()).optional(),
+  referenceImageRefs: z.array(z.string()).optional(),
+  styleStrength: z.number().min(0).max(1).optional(),
+});
+
+export const GenerateAssetOutput = z.object({
+  realizedAsFill: z.literal(true),
+  appliedToBlockId: z.number().optional(),
+  assetRef: z.string().optional(),
+  checkpoints: z.object({
+    input: z.enum(["pass", "block"]),
+    asset: z.enum(["pass", "block"]),
+    brandLegal: z.enum(["pass", "block"]),
+  }),
+  auditId: z.string(),
+});
+
 export type CreateSceneInput = z.infer<typeof CreateSceneInput>;
 export type CreateBlockInput = z.infer<typeof CreateBlockInput>;
 export type SetPropertiesInput = z.infer<typeof SetPropertiesInput>;

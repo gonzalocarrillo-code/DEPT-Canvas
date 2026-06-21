@@ -25,9 +25,9 @@ leaves may start once the tag exists): `freeze/mcp-tools`, `freeze/motion-engine
 - [x] P1-T4 · cursor · p1-t4-cursor · built-against n/a · tests pass · 2026-06-21
 - [x] P1-T5 · cursor · p1-t5-cursor · built-against freeze/mcp-tools @ 6c12f31 · tests pass · 2026-06-21
 - [x] P1-T6 · cursor · p1-t6-cursor · built-against freeze/mcp-tools · tests pass · 2026-06-21
-- [ ] P1-T7 · input-moderation guardrail (checkpoint 1)
-- [ ] P1-T8 · generate_asset + safety pipeline
-- [ ] **PHASE 1 GATE**
+- [x] P1-T7 · cursor · p1-t7-cursor · built-against freeze/mcp-tools · tests pass · 2026-06-21
+- [x] P1-T8 · cursor · p1-t8-cursor · built-against freeze/mcp-tools · tests pass · 2026-06-21
+- [x] **PHASE 1 GATE** — report; await go-ahead · 2026-06-21
 
 ## Phase 2 — Locks, variation, MotionEngine (Tier 1), two modes
 - [ ] P2-T1 · lock manifest + enforcement  → set `freeze/lock-manifest`
