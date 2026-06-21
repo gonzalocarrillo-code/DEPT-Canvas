@@ -21,9 +21,9 @@ leaves may start once the tag exists): `freeze/mcp-tools`, `freeze/motion-engine
 ## Phase 1 — MCP server & agents
 - [x] P1-T1 · cursor · p1-t1-cursor · built-against n/a · tests pass · 2026-06-21
 - [x] P1-T2 · cursor · p1-t2-cursor · built-against n/a · tests pass · 2026-06-21
-- [ ] P1-T3 · auth, tenant scoping, RBAC
-- [ ] P1-T4 · immutable audit writer
-- [ ] P1-T5 · core MCP tools  → set `freeze/mcp-tools`
+- [x] P1-T3 · cursor · p1-t3-cursor · built-against n/a · tests pass · 2026-06-21
+- [x] P1-T4 · cursor · p1-t4-cursor · built-against n/a · tests pass · 2026-06-21
+- [x] P1-T5 · cursor · p1-t5-cursor · built-against freeze/mcp-tools @ 6c12f31 · tests pass · 2026-06-21
 - [ ] P1-T6 · orchestration agents (planner/authoring/variation)
 - [ ] P1-T7 · input-moderation guardrail (checkpoint 1)
 - [ ] P1-T8 · generate_asset + safety pipeline
