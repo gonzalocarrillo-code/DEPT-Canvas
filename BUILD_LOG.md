@@ -14,9 +14,9 @@ leaves may start once the tag exists): `freeze/mcp-tools`, `freeze/motion-engine
 ## Phase 0 — De-risk
 - [x] P0-T1 · cursor · p0-t1-cursor · built-against n/a · tests pass · 2026-06-21
 - [x] P0-T2 · cursor · p0-t2-cursor · built-against n/a · tests pass · 2026-06-21
-- [ ] P0-T3 · build-time mapping agent
-- [ ] P0-T4 · render-path spike (settle exportVideo vs Renderer container)
-- [ ] **PHASE 0 GATE** — report findings; await go-ahead
+- [x] P0-T3 · cursor · p0-t3-cursor · built-against n/a · tests pass · 2026-06-21
+- [x] P0-T4 · cursor · p0-t4-cursor · built-against n/a · tests pass · 2026-06-21
+- [x] **PHASE 0 GATE** — report findings; await go-ahead · 2026-06-21
 
 ## Phase 1 — MCP server & agents
 - [ ] P1-T1 · scene-mcp Streamable HTTP skeleton
