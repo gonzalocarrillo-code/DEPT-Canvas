@@ -17,7 +17,12 @@ locals {
   service_member    = "serviceAccount:${local.service_account}"
   cloud_sql_conn    = google_sql_database_instance.tenant.connection_name
   normalized_region = lower(var.region)
+  project_number    = data.google_project.current.number
+  gcs_service_agent = "serviceAccount:service-${local.project_number}@gs-project-accounts.iam.gserviceaccount.com"
+  cloudsql_agent    = "serviceAccount:service-${local.project_number}@gcp-sa-cloud-sql.iam.gserviceaccount.com"
 }
+
+data "google_project" "current" {}
 
 resource "google_kms_key_ring" "tenant" {
   count    = var.cmek_key == null ? 1 : 0
@@ -57,7 +62,11 @@ resource "google_storage_bucket" "assets" {
     enabled = true
   }
 
-  depends_on = [google_kms_crypto_key_iam_member.mcp]
+  depends_on = [
+    google_kms_crypto_key_iam_member.mcp,
+    google_kms_crypto_key_iam_member.gcs_service_agent,
+    google_kms_crypto_key_iam_member.cloudsql_service_agent,
+  ]
 }
 
 resource "google_sql_database_instance" "tenant" {
@@ -84,7 +93,11 @@ resource "google_sql_database_instance" "tenant" {
     }
   }
 
-  depends_on = [google_kms_crypto_key_iam_member.mcp]
+  depends_on = [
+    google_kms_crypto_key_iam_member.mcp,
+    google_kms_crypto_key_iam_member.gcs_service_agent,
+    google_kms_crypto_key_iam_member.cloudsql_service_agent,
+  ]
 }
 
 resource "google_sql_database" "app" {
@@ -145,4 +158,16 @@ resource "google_kms_crypto_key_iam_member" "mcp" {
   crypto_key_id = local.kms_key_id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = local.service_member
+}
+
+resource "google_kms_crypto_key_iam_member" "gcs_service_agent" {
+  crypto_key_id = local.kms_key_id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = local.gcs_service_agent
+}
+
+resource "google_kms_crypto_key_iam_member" "cloudsql_service_agent" {
+  crypto_key_id = local.kms_key_id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = local.cloudsql_agent
 }

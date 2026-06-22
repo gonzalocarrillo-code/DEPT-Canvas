@@ -1,4 +1,10 @@
 mock_provider "google" {
+  mock_data "google_project" {
+    defaults = {
+      number = "123456789012"
+    }
+  }
+
   mock_resource "google_cloud_run_v2_service" {
     defaults = {
       uri = "https://tenant-acme-emea-mcp-europe-west1.run.app"
@@ -80,6 +86,26 @@ run "tenant_module_plan" {
       google_kms_crypto_key_iam_member.mcp.member != "allAuthenticatedUsers",
     ])
     error_message = "Tenant IAM bindings must never grant public or cross-tenant principals."
+  }
+
+  assert {
+    condition     = google_storage_bucket.assets.encryption[0].default_kms_key_name == google_kms_crypto_key.tenant[0].id
+    error_message = "Tenant bucket must use the tenant CMEK key for encryption."
+  }
+
+  assert {
+    condition     = google_sql_database_instance.tenant.encryption_key_name == google_kms_crypto_key.tenant[0].id
+    error_message = "Tenant Cloud SQL instance must use the tenant CMEK key for encryption."
+  }
+
+  assert {
+    condition     = google_kms_crypto_key_iam_member.gcs_service_agent.role == "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+    error_message = "Cloud Storage service agent must have CMEK encrypter/decrypter on the tenant key."
+  }
+
+  assert {
+    condition     = google_kms_crypto_key_iam_member.cloudsql_service_agent.role == "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+    error_message = "Cloud SQL service agent must have CMEK encrypter/decrypter on the tenant key."
   }
 
   assert {
