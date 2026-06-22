@@ -48,9 +48,9 @@ leaves may start once the tag exists): `freeze/mcp-tools`, `freeze/motion-engine
 
 ## Phase 4 — Enterprise hardening
 - [x] P4-T1 · codex · p4-t1-codex · built-against n/a · tests pass · 2026-06-21
-- [ ] P4-T2 · shared control plane + edge
-- [ ] P4-T3 · audit sink, observability, residency
-- [ ] P4-T4 · SSO/SCIM + server-side RBAC matrix
+- [x] P4-T2 · cursor · p4-t2-cursor (via p4-t4-cursor) · built-against n/a · tests pass · 2026-06-22
+- [x] P4-T3 · cursor · p4-t3-cursor · built-against n/a · tests pass · 2026-06-22
+- [x] P4-T4 · cursor · p4-t4-cursor · built-against n/a · tests pass · 2026-06-22
 - [ ] **PHASE 4 GATE**
 
 ## Deferred — DO NOT BUILD until the Tier-2 trigger fires
