@@ -47,7 +47,7 @@ leaves may start once the tag exists): `freeze/mcp-tools`, `freeze/motion-engine
 - [ ] **PHASE 3 GATE**
 
 ## Phase 4 — Enterprise hardening
-- [ ] P4-T1 · Terraform per-tenant module
+- [x] P4-T1 · codex · p4-t1-codex · built-against n/a · tests pass · 2026-06-21
 - [ ] P4-T2 · shared control plane + edge
 - [ ] P4-T3 · audit sink, observability, residency
 - [ ] P4-T4 · SSO/SCIM + server-side RBAC matrix
