@@ -11,6 +11,9 @@
   --dept-color-accent: #006b78;
   --dept-color-accent-contrast: #ffffff;
   --dept-color-warning: #b45309;
+  --dept-color-timeline-in: #e7f5f3;
+  --dept-color-timeline-loop: #f2f0ff;
+  --dept-color-timeline-out: #fff4e5;
   --dept-space-1: 4px;
   --dept-space-2: 8px;
   --dept-space-3: 12px;
@@ -383,15 +386,15 @@
 }
 
 .dc-timeline-bar--in {
-  background: #e7f5f3;
+  background: var(--dept-color-timeline-in);
 }
 
 .dc-timeline-bar--loop {
-  background: #f2f0ff;
+  background: var(--dept-color-timeline-loop);
 }
 
 .dc-timeline-bar--out {
-  background: #fff4e5;
+  background: var(--dept-color-timeline-out);
 }
 
 .dc-timeline-bar__kind {

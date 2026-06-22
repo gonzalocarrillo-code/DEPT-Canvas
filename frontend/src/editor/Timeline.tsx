@@ -1,5 +1,6 @@
-import type { MotionRealization } from "../../../scene-mcp/src/motion/motion-engine.js";
 import { escapeHtml } from "../design/Button.js";
+
+export type MotionRealization = "native" | "composed";
 
 export type TimelinePresetKind = "in" | "loop" | "out";
 
@@ -169,4 +170,3 @@ export function renderTimeline(state: TimelineState = DEFAULT_TIMELINE_STATE): s
     <ol class="dc-timeline-layers">${layers}</ol>
   </div>`;
 }
-
