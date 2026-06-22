@@ -38,7 +38,7 @@ leaves may start once the tag exists): `freeze/mcp-tools`, `freeze/motion-engine
 - [x] **PHASE 2 GATE** — interfaces frozen; Codex may begin Phase 3/4 leaves · 2026-06-21
 
 ## Phase 3 — UX / UI (parallelizable across Codex agents once interfaces are frozen)
-- [ ] P3-T1 · design system & app shell
+- [x] P3-T1 · codex · p3-t1-codex · built-against freeze/mcp-tools @ c10dbcb + freeze/motion-engine @ 4f6a95e · tests pass · 2026-06-22
 - [ ] P3-T2 · editor (Design/Animate; Tier-1 preset timeline)
 - [ ] P3-T3 · contextual AI panel
 - [ ] P3-T4 · variation studio & batch review

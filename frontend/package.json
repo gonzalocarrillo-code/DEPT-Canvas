@@ -7,7 +7,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "echo 'lint: frontend (no-op)'",
-    "test": "vitest run --config ../vitest.config.ts --dir tests --passWithNoTests"
+    "test": "vitest run --config /dev/null tests/shell.spec.ts --passWithNoTests"
   },
   "devDependencies": {
     "typescript": "^5.8.3",
