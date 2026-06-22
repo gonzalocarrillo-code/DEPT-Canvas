@@ -2,7 +2,7 @@ import type { z } from "zod";
 import type { CallerContext } from "../auth/tenant-context.js";
 import { ApplyLockManifestInput, ApplyLockManifestOutput } from "./_schemas.js";
 import { requireJob, withToolAudit } from "./_context.js";
-import type { LockManifest } from "../engine/job-registry.js";
+import { normalizeManifest } from "../locks/manifest.js";
 
 export async function applyLockManifest(
   ctx: CallerContext,
@@ -11,7 +11,7 @@ export async function applyLockManifest(
   const parsed = ApplyLockManifestInput.parse(input);
   return withToolAudit(ctx, "apply_lock_manifest", parsed, async () => {
     const job = requireJob(parsed.jobId, ctx.tenantId);
-    job.lockManifest = parsed.manifest as LockManifest;
+    job.lockManifest = normalizeManifest(parsed.manifest);
     return ApplyLockManifestOutput.parse({
       templateId: parsed.manifest.templateId,
       frozenCount: parsed.manifest.frozen.length,
