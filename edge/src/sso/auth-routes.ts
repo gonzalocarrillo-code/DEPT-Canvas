@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import * as jose from "jose";
 import { writeBreakGlassAudit } from "../audit/break-glass-audit.js";
+import { PLATFORM_SESSION_JWT_KID } from "../session-jwt-kid.js";
 import type { SessionToken } from "../validate-token.js";
 import { TokenValidationError } from "../validate-token.js";
 import { verifyBreakGlassToken } from "./break-glass.js";
@@ -44,7 +45,7 @@ async function issueSessionJwt(session: SessionToken): Promise<string> {
     tenant_id: session.tenantId,
     role: session.role,
   })
-    .setProtectedHeader({ alg: "RS256", kid: "test-key" })
+    .setProtectedHeader({ alg: "RS256", kid: PLATFORM_SESSION_JWT_KID })
     .setIssuer(issuer)
     .setAudience(audience)
     .setSubject(session.userId)

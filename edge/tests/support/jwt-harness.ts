@@ -1,5 +1,9 @@
 import { createServer, type Server } from "node:http";
 import * as jose from "jose";
+import { PLATFORM_SESSION_JWT_KID } from "../../src/session-jwt-kid.js";
+
+const IDP_JWT_KID = "idp-signing-v1";
+const BREAK_GLASS_JWT_KID = "break-glass-v1";
 
 export interface JwtTrustDomain {
   issuer: string;
@@ -18,10 +22,11 @@ let breakGlassServer: Server | undefined;
 
 async function startJwksServer(
   publicKey: CryptoKey,
+  kid: string,
 ): Promise<{ uri: string; server: Server }> {
   const jwk = await jose.exportJWK(publicKey);
   const body = JSON.stringify({
-    keys: [{ ...jwk, kid: "test-key", use: "sig", alg: "RS256" }],
+    keys: [{ ...jwk, kid, use: "sig", alg: "RS256" }],
   });
 
   return new Promise((resolve, reject) => {
@@ -56,7 +61,10 @@ export async function setupPlatformJwtEnv(
     return platformDomain;
   }
   const pair = await jose.generateKeyPair("RS256", { extractable: true });
-  const { uri, server } = await startJwksServer(pair.publicKey);
+  const { uri, server } = await startJwksServer(
+    pair.publicKey,
+    PLATFORM_SESSION_JWT_KID,
+  );
   platformServer = server;
   platformDomain = {
     issuer,
@@ -81,7 +89,7 @@ export async function setupIdpJwtEnv(
     return idpDomain;
   }
   const pair = await jose.generateKeyPair("RS256", { extractable: true });
-  const { uri, server } = await startJwksServer(pair.publicKey);
+  const { uri, server } = await startJwksServer(pair.publicKey, IDP_JWT_KID);
   idpServer = server;
   idpDomain = {
     issuer,
@@ -104,7 +112,10 @@ export async function setupBreakGlassJwtEnv(
     return breakGlassDomain;
   }
   const pair = await jose.generateKeyPair("RS256", { extractable: true });
-  const { uri, server } = await startJwksServer(pair.publicKey);
+  const { uri, server } = await startJwksServer(
+    pair.publicKey,
+    BREAK_GLASS_JWT_KID,
+  );
   breakGlassServer = server;
   breakGlassDomain = {
     issuer,
@@ -125,7 +136,7 @@ export async function mintPlatformSessionJwt(
 ): Promise<string> {
   const domain = platformDomain ?? (await setupPlatformJwtEnv());
   const builder = new jose.SignJWT(claims)
-    .setProtectedHeader({ alg: "RS256", kid: "test-key" })
+    .setProtectedHeader({ alg: "RS256", kid: PLATFORM_SESSION_JWT_KID })
     .setIssuer(domain.issuer)
     .setAudience(domain.audience)
     .setSubject(claims.sub ?? "test-user")
@@ -146,7 +157,7 @@ export async function mintIdpIdToken(
 ): Promise<string> {
   const domain = idpDomain ?? (await setupIdpJwtEnv());
   const builder = new jose.SignJWT(claims)
-    .setProtectedHeader({ alg: "RS256", kid: "test-key" })
+    .setProtectedHeader({ alg: "RS256", kid: IDP_JWT_KID })
     .setIssuer(domain.issuer)
     .setAudience(domain.audience)
     .setSubject(claims.sub ?? "idp-user")
@@ -167,7 +178,7 @@ export async function mintBreakGlassToken(claims: {
 }): Promise<string> {
   const domain = breakGlassDomain ?? (await setupBreakGlassJwtEnv());
   return new jose.SignJWT({ break_glass: true, tenant_id: claims.tenant_id })
-    .setProtectedHeader({ alg: "RS256", kid: "test-key" })
+    .setProtectedHeader({ alg: "RS256", kid: BREAK_GLASS_JWT_KID })
     .setIssuer(domain.issuer)
     .setAudience(domain.audience)
     .setSubject(claims.sub)

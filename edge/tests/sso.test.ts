@@ -211,7 +211,7 @@ describe("sso.test.ts live-path adversarial", () => {
       tenant_id: "tenant-b",
       role: "tenant_admin",
     })
-      .setProtectedHeader({ alg: "RS256", kid: "test-key" })
+      .setProtectedHeader({ alg: "RS256", kid: "rogue-platform-kid" })
       .setIssuer(IDP_ISSUER)
       .setAudience(IDP_AUDIENCE)
       .setSubject("attacker")

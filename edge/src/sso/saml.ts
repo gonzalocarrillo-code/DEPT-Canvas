@@ -131,6 +131,9 @@ function validateConditions(assertion: XmldomElement): void {
 
   const notBefore = conditions.getAttribute("NotBefore");
   const notOnOrAfter = conditions.getAttribute("NotOnOrAfter");
+  if (!notOnOrAfter) {
+    throw new TokenValidationError("SAML NotOnOrAfter missing");
+  }
   const now = Date.now();
   if (notBefore) {
     const notBeforeMs = Date.parse(notBefore);
@@ -140,7 +143,10 @@ function validateConditions(assertion: XmldomElement): void {
   }
   if (notOnOrAfter) {
     const notOnOrAfterMs = Date.parse(notOnOrAfter);
-    if (!Number.isNaN(notOnOrAfterMs) && now >= notOnOrAfterMs) {
+    if (Number.isNaN(notOnOrAfterMs)) {
+      throw new TokenValidationError("SAML NotOnOrAfter invalid");
+    }
+    if (now >= notOnOrAfterMs) {
       throw new TokenValidationError("SAML assertion expired");
     }
   }
