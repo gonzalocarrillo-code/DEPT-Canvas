@@ -90,8 +90,10 @@ export function setTypedProperty(
       engine.block.setInt(blockId, key, value as number);
       return;
     case "Float":
-    case "Double":
       engine.block.setFloat(blockId, key, value as number);
+      return;
+    case "Double":
+      engine.block.setDouble(blockId, key, value as number);
       return;
     case "String":
       engine.block.setString(blockId, key, value as string);
@@ -120,8 +122,9 @@ export function getTypedProperty(
     case "Int":
       return engine.block.getInt(blockId, key) as number;
     case "Float":
-    case "Double":
       return engine.block.getFloat(blockId, key) as number;
+    case "Double":
+      return engine.block.getDouble(blockId, key) as number;
     case "String":
       return engine.block.getString(blockId, key) as string;
     case "Enum":

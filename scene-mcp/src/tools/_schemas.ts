@@ -117,3 +117,75 @@ export type CreateSceneInput = z.infer<typeof CreateSceneInput>;
 export type CreateBlockInput = z.infer<typeof CreateBlockInput>;
 export type SetPropertiesInput = z.infer<typeof SetPropertiesInput>;
 export type SaveSceneInput = z.infer<typeof SaveSceneInput>;
+
+export const MotionResultSchema = z.object({
+  realizedAs: z.enum(["native", "composed"]),
+  appliedPresets: z.array(z.string()),
+});
+
+export const Tier2CandidateSchema = z.object({
+  tier2Candidate: z.literal(true),
+  reason: z.string(),
+});
+
+export const ApplyIntentInput = z.object({
+  jobId: z.string(),
+  blockId: z.number().int(),
+  intent: z.string(),
+  params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+});
+
+export const ApplyIntentOutput = z.union([MotionResultSchema, Tier2CandidateSchema]);
+
+export const StaggerInput = z.object({
+  jobId: z.string(),
+  blockIds: z.array(z.number().int()).min(1),
+  stepSec: z.number().positive(),
+});
+
+export const StaggerOutput = z.union([MotionResultSchema, Tier2CandidateSchema]);
+
+export const SetTimingInput = z.object({
+  jobId: z.string(),
+  blockId: z.number().int(),
+  start: z.number().min(0),
+  duration: z.number().positive(),
+});
+
+export const SetTimingOutput = z.union([MotionResultSchema, Tier2CandidateSchema]);
+
+export const SequenceInput = z.object({
+  jobId: z.string(),
+  sceneIds: z.array(z.number().int()).min(1),
+  offsets: z.array(z.number().min(0)),
+});
+
+export const SequenceOutput = z.union([MotionResultSchema, Tier2CandidateSchema]);
+
+export const QueryAnimatableInput = z.object({
+  jobId: z.string(),
+  blockId: z.number().int(),
+});
+
+export const QueryAnimatableOutput = z.object({
+  properties: z.array(
+    z.object({
+      key: z.string(),
+      type: z.string(),
+      enumValues: z.array(z.string()).optional(),
+    }),
+  ),
+  easingOptions: z.array(z.string()),
+  animationTypes: z.array(
+    z.object({
+      type: z.string(),
+      properties: z.array(
+        z.object({
+          key: z.string(),
+          type: z.string(),
+          enumValues: z.array(z.string()).optional(),
+        }),
+      ),
+    }),
+  ),
+});

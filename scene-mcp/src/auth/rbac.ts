@@ -63,6 +63,7 @@ export const TOOL_CAPABILITIES: Record<string, Capability> = {
   stagger: "scene:write",
   set_timing: "scene:write",
   sequence: "scene:write",
+  query_animatable: "scene:read",
 };
 
 export function capabilityForTool(toolName: string): Capability | undefined {

@@ -109,7 +109,7 @@ describe("locks.test.ts guarantees", () => {
   });
 
   it("rejects_motion_intent_moving_locked_position", async () => {
-    const { scene, job, logo, positionKeys } = await setupLockedGraphic();
+    const { scene: _scene, job, logo, positionKeys } = await setupLockedGraphic();
 
     await expect(
       enforceMotionWrite(job, logo, positionKeys, {

@@ -8,14 +8,24 @@ import { applyBrandKit } from "./apply-brand-kit.js";
 import { applyLockManifest } from "./apply-lock-manifest.js";
 import { saveScene } from "./save-scene.js";
 import { generateAsset } from "./generate-asset.js";
+import { applyIntent } from "./apply-intent.js";
+import { stagger } from "./stagger.js";
+import { setTiming } from "./set-timing.js";
+import { sequence } from "./sequence.js";
+import { queryAnimatableTool } from "./query-animatable.js";
 import {
   ApplyBrandKitInput,
+  ApplyIntentInput,
   ApplyLockManifestInput,
   CreateBlockInput,
   CreateSceneInput,
   GenerateAssetInput,
+  QueryAnimatableInput,
   SaveSceneInput,
+  SequenceInput,
   SetPropertiesInput,
+  SetTimingInput,
+  StaggerInput,
 } from "./_schemas.js";
 import { FORBIDDEN_TOOL_NAMES } from "./save-scene.js";
 
@@ -61,6 +71,11 @@ export function buildCoreTools(): ToolRegistration[] {
     wrapTool("apply_lock_manifest", ApplyLockManifestInput, applyLockManifest),
     wrapTool("save_scene", SaveSceneInput, saveScene),
     wrapTool("generate_asset", GenerateAssetInput, generateAsset),
+    wrapTool("apply_intent", ApplyIntentInput, applyIntent),
+    wrapTool("stagger", StaggerInput, stagger),
+    wrapTool("set_timing", SetTimingInput, setTiming),
+    wrapTool("sequence", SequenceInput, sequence),
+    wrapTool("query_animatable", QueryAnimatableInput, queryAnimatableTool),
   ];
 }
 
