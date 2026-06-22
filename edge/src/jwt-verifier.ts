@@ -7,19 +7,37 @@ export interface JwtVerifierConfig {
   audience: string;
 }
 
-let jwksOverride: jose.JWTVerifyGetKey | undefined;
+let platformJwksOverride: jose.JWTVerifyGetKey | undefined;
+let idpJwksOverride: jose.JWTVerifyGetKey | undefined;
 
+/** Platform-issued session tokens (API + SCIM). */
 export function setJwksForTests(jwks: jose.JWTVerifyGetKey | undefined): void {
-  jwksOverride = jwks;
+  platformJwksOverride = jwks;
 }
 
-async function resolveJwks(): Promise<jose.JWTVerifyGetKey> {
-  if (jwksOverride) {
-    return jwksOverride;
+/** IdP-issued OIDC id_tokens at login callback. */
+export function setIdpJwksForTests(jwks: jose.JWTVerifyGetKey | undefined): void {
+  idpJwksOverride = jwks;
+}
+
+async function resolvePlatformJwks(): Promise<jose.JWTVerifyGetKey> {
+  if (platformJwksOverride) {
+    return platformJwksOverride;
   }
   const jwksUri = process.env.EDGE_JWKS_URI;
   if (!jwksUri) {
     throw new TokenValidationError("EDGE_JWKS_URI is not configured");
+  }
+  return jose.createRemoteJWKSet(new URL(jwksUri));
+}
+
+async function resolveIdpJwks(): Promise<jose.JWTVerifyGetKey> {
+  if (idpJwksOverride) {
+    return idpJwksOverride;
+  }
+  const jwksUri = process.env.EDGE_IDP_JWKS_URI ?? process.env.EDGE_JWKS_URI;
+  if (!jwksUri) {
+    throw new TokenValidationError("EDGE_IDP_JWKS_URI is not configured");
   }
   return jose.createRemoteJWKSet(new URL(jwksUri));
 }
@@ -47,8 +65,9 @@ function claimRole(payload: jose.JWTPayload): EdgeRole {
   return role as EdgeRole;
 }
 
-export async function verifyJwtAccessToken(
+async function verifyWithJwks(
   token: string,
+  jwks: jose.JWTVerifyGetKey,
   config?: Partial<JwtVerifierConfig>,
 ): Promise<{ userId: string; tenantId: string; role: EdgeRole; expiresAt?: number }> {
   const issuer = config?.issuer ?? process.env.EDGE_JWT_ISSUER;
@@ -57,7 +76,6 @@ export async function verifyJwtAccessToken(
     throw new TokenValidationError("JWT issuer/audience not configured");
   }
 
-  const jwks = await resolveJwks();
   let payload: jose.JWTPayload;
   try {
     const verified = await jose.jwtVerify(token, jwks, {
@@ -77,6 +95,20 @@ export async function verifyJwtAccessToken(
     role: claimRole(payload),
     expiresAt: payload.exp ? payload.exp * 1000 : undefined,
   };
+}
+
+export async function verifyJwtAccessToken(
+  token: string,
+  config?: Partial<JwtVerifierConfig>,
+): Promise<{ userId: string; tenantId: string; role: EdgeRole; expiresAt?: number }> {
+  return verifyWithJwks(token, await resolvePlatformJwks(), config);
+}
+
+export async function verifyIdpJwtAccessToken(
+  token: string,
+  config?: Partial<JwtVerifierConfig>,
+): Promise<{ userId: string; tenantId: string; role: EdgeRole; expiresAt?: number }> {
+  return verifyWithJwks(token, await resolveIdpJwks(), config);
 }
 
 export async function exportPublicJwks(

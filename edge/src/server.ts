@@ -4,6 +4,7 @@ import express, {
   type Response,
   type NextFunction,
 } from "express";
+import { createScimRouter } from "./scim/provisioning.js";
 import { assertMcpEgressAllowed } from "./egress-policy.js";
 import {
   EgressDeniedError,
@@ -13,6 +14,10 @@ import {
 } from "./errors.js";
 import { checkRateLimit } from "./rate-limit.js";
 import { routeRequest, type RoutedRequest } from "./tenant-router.js";
+import {
+  isPublicAuthPath,
+  registerAuthRoutes,
+} from "./sso/auth-routes.js";
 import {
   TokenValidationError,
   validateSessionToken,
@@ -51,8 +56,11 @@ export function createEdgeApp(options: EdgeServerOptions = {}): Express {
     res.json({ ok: true, service: "dept-canvas-edge" });
   });
 
+  registerAuthRoutes(app, safeErrorResponse);
+  app.use("/scim/v2", createScimRouter());
+
   app.use(async (req, res, next) => {
-    if (req.path === "/health") {
+    if (isPublicAuthPath(req.path)) {
       next();
       return;
     }

@@ -1,17 +1,9 @@
-export type Role =
-  | "viewer"
-  | "creator"
-  | "brand_owner"
-  | "approver"
-  | "tenant_admin";
-
-export type Capability =
-  | "scene:read"
-  | "scene:create"
-  | "scene:write"
-  | "brand:manage"
-  | "content:approve"
-  | "tenant:admin";
+import {
+  capabilitiesForRole,
+  CAPABILITY_MATRIX,
+  type Capability,
+  type Role,
+} from "./capability-matrix.js";
 
 export class CapabilityDeniedError extends Error {
   readonly role: Role;
@@ -26,29 +18,15 @@ export class CapabilityDeniedError extends Error {
 }
 
 const ROLE_CAPABILITIES: Record<Role, ReadonlySet<Capability>> = {
-  viewer: new Set(["scene:read"]),
-  creator: new Set(["scene:read", "scene:create", "scene:write"]),
-  brand_owner: new Set([
-    "scene:read",
-    "scene:create",
-    "scene:write",
-    "brand:manage",
-  ]),
-  approver: new Set([
-    "scene:read",
-    "scene:create",
-    "scene:write",
-    "content:approve",
-  ]),
-  tenant_admin: new Set([
-    "scene:read",
-    "scene:create",
-    "scene:write",
-    "brand:manage",
-    "content:approve",
-    "tenant:admin",
-  ]),
+  viewer: capabilitiesForRole("viewer"),
+  creator: capabilitiesForRole("creator"),
+  brand_owner: capabilitiesForRole("brand_owner"),
+  approver: capabilitiesForRole("approver"),
+  tenant_admin: capabilitiesForRole("tenant_admin"),
 };
+
+export { CAPABILITY_MATRIX };
+export type { Capability, Role };
 
 export const TOOL_CAPABILITIES: Record<string, Capability> = {
   create_scene: "scene:create",
