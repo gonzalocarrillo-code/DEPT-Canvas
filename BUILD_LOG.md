@@ -43,7 +43,7 @@ leaves may start once the tag exists): `freeze/mcp-tools`, `freeze/motion-engine
 - [ ] P3-T3 · contextual AI panel
 - [ ] P3-T4 · variation studio & batch review
 - [ ] P3-T5 · workspace dashboard
-- [ ] P3-T6 · auth/account/users/tenant settings
+- [x] P3-T6 · codex · P3-T6-codex · built-against freeze/mcp-tools @ c10dbcb · tests pass · 2026-06-22
 - [ ] **PHASE 3 GATE**
 
 ## Phase 4 — Enterprise hardening
