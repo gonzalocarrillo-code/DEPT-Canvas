@@ -11,7 +11,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "echo 'lint: renderer (no-op)'",
-    "test": "vitest run --config ../vitest.config.ts tests/**/*.test.ts"
+    "test": "vitest run --config ../vitest.config.ts"
   },
   "dependencies": {
     "@cesdk/node": "1.76.1"

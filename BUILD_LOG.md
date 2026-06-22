@@ -30,12 +30,12 @@ leaves may start once the tag exists): `freeze/mcp-tools`, `freeze/motion-engine
 - [x] **PHASE 1 GATE** — report; await go-ahead · 2026-06-21
 
 ## Phase 2 — Locks, variation, MotionEngine (Tier 1), two modes
-- [ ] P2-T1 · lock manifest + enforcement  → set `freeze/lock-manifest`
-- [ ] P2-T2 · MotionEngine interface + CesdkMotionEngine + motion tools  → set `freeze/motion-engine`
-- [ ] P2-T3 · variation engine (generate-once/render-many)  → set `freeze/variation-api`
-- [ ] P2-T4 · render_variant + renderer worker
-- [ ] P2-T5 · two generation modes
-- [ ] **PHASE 2 GATE** — interfaces frozen; Codex may begin Phase 3/4 leaves
+- [x] P2-T1 · cursor · p2-t1-cursor · built-against freeze/mcp-tools · tests pass · 2026-06-21 · tagged `freeze/lock-manifest` @ 769ab2e
+- [x] P2-T2 · cursor · p2-t2-cursor · built-against freeze/lock-manifest · tests pass · 2026-06-21 · tagged `freeze/motion-engine` @ 4f6a95e
+- [x] P2-T3 · cursor · p2-t3-cursor · built-against freeze/motion-engine · tests pass · 2026-06-21 · tagged `freeze/variation-api` @ 273db70
+- [x] P2-T4 · cursor · p2-t4-cursor · built-against freeze/variation-api · tests pass · 2026-06-21 · container MP4 e2e **pending** (no `CESDK_LICENSE`)
+- [x] P2-T5 · cursor · p2-t5-cursor · built-against all Phase 2 freezes · tests pass · 2026-06-21 · re-tagged `freeze/mcp-tools` (full tool surface incl. `generate_asset`)
+- [x] **PHASE 2 GATE** — interfaces frozen; Codex may begin Phase 3/4 leaves · 2026-06-21
 
 ## Phase 3 — UX / UI (parallelizable across Codex agents once interfaces are frozen)
 - [ ] P3-T1 · design system & app shell
