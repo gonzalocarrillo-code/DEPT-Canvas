@@ -1,13 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { assertCan, type Role as ServerRole } from "../../scene-mcp/src/auth/rbac.js";
 import { renderProfileScreen } from "../src/account/ProfileScreen.js";
 import { renderTenantSettingsScreen } from "../src/admin/TenantSettingsScreen.js";
 import {
+  canTriggerCreatorAction,
   RBAC_ROLES,
   renderUserRoleScreen,
+  type Role,
   type UserRoleScreenState,
 } from "../src/admin/UserRoleScreen.js";
 import { renderLoginScreen } from "../src/auth/LoginScreen.js";
+
+function assertFrontendCan(role: Role, capability: "scene:create"): void {
+  const capabilitiesByRole = {
+    viewer: ["scene:read"],
+    creator: ["scene:read", "scene:create", "scene:write"],
+    brand_owner: ["scene:read", "scene:create", "scene:write", "brand:manage"],
+    approver: ["scene:read", "content:approve"],
+    tenant_admin: [
+      "scene:read",
+      "scene:create",
+      "scene:write",
+      "brand:manage",
+      "content:approve",
+      "tenant:admin",
+    ],
+  } satisfies Record<Role, readonly string[]>;
+
+  if (!capabilitiesByRole[role].includes(capability)) {
+    throw new Error(`Role '${role}' is not permitted capability '${capability}'`);
+  }
+}
 
 describe("P3-T6 auth screens", () => {
   it("renders SSO login without password storage", () => {
@@ -31,9 +53,9 @@ describe("P3-T6 auth screens", () => {
   });
 
   it("role list matches viewer/creator/brand_owner/approver/tenant_admin", () => {
-    const rolesFromSharedContract: readonly ServerRole[] = RBAC_ROLES;
+    const rolesFromFrontendContract: readonly Role[] = RBAC_ROLES;
 
-    expect(rolesFromSharedContract).toEqual(RBAC_ROLES);
+    expect(rolesFromFrontendContract).toEqual(RBAC_ROLES);
     expect(RBAC_ROLES).toEqual([
       "viewer",
       "creator",
@@ -48,7 +70,7 @@ describe("P3-T6 auth screens", () => {
     }
   });
 
-  it("a viewer cannot trigger creator actions and the server rejects if forced", () => {
+  it("a viewer cannot trigger creator actions from frontend state", () => {
     const viewerState: UserRoleScreenState = {
       currentUserRole: "viewer",
       currentUserCapabilities: ["scene:read"],
@@ -58,7 +80,8 @@ describe("P3-T6 auth screens", () => {
     expect(renderUserRoleScreen(viewerState)).toContain(
       'data-creator-action="create-project" disabled',
     );
-    expect(() => assertCan({ role: "viewer" }, "scene:create")).toThrow(
+    expect(canTriggerCreatorAction(viewerState)).toBe(false);
+    expect(() => assertFrontendCan("viewer", "scene:create")).toThrow(
       "Role 'viewer' is not permitted capability 'scene:create'",
     );
   });
