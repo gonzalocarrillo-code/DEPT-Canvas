@@ -53,6 +53,10 @@ importers:
         version: 3.2.6(@types/node@22.20.0)(tsx@4.22.4)
 
   frontend:
+    dependencies:
+      '@cesdk/cesdk-js':
+        specifier: ^1.76.1
+        version: 1.76.1
     devDependencies:
       typescript:
         specifier: ^5.8.3
@@ -124,6 +128,26 @@ importers:
         version: 3.2.6(@types/node@22.20.0)(tsx@4.22.4)
 
 packages:
+
+  '@cesdk/cesdk-js@1.76.1':
+    resolution: {integrity: sha512-PoO2MS5Gs26fgzv9s2aP4QdBFb0zBCdJafN5C9EY8S//sMnFo+1WirVYeK/FdjAZ4ZqK8UnLfOGhPBUapED+3Q==}
+    peerDependencies:
+      '@angular/common': '>=14.0.0'
+      '@angular/core': '>=14.0.0'
+      react: '>16'
+      vue: ^3.0.0
+    peerDependenciesMeta:
+      '@angular/common':
+        optional: true
+      '@angular/core':
+        optional: true
+      react:
+        optional: true
+      vue:
+        optional: true
+
+  '@cesdk/engine@1.76.1':
+    resolution: {integrity: sha512-l7Go6eSmYazsbmixBFIUelQ5G0w2/tzoyEUvLKlcXLbFqNWb1u98kcnDI/QA/wf3V5Zv9QsSySJO6FpKnx0++A==}
 
   '@cesdk/node@1.76.1':
     resolution: {integrity: sha512-86JMdIwMrwpfKQ9PfJa2giN+dS22PqhN32jLRVJgjrtlC7y346cawmDM7i8DlYWWiDcOycCR5TVkKSBZo7oRcg==}
@@ -1369,6 +1393,12 @@ packages:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
 snapshots:
+
+  '@cesdk/cesdk-js@1.76.1':
+    dependencies:
+      '@cesdk/engine': 1.76.1
+
+  '@cesdk/engine@1.76.1': {}
 
   '@cesdk/node@1.76.1': {}
 
