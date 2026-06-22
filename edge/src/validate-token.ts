@@ -55,8 +55,8 @@ export async function validateSessionToken(
     throw new TokenValidationError("Unsigned dev/service tokens are rejected");
   }
 
-  const { verifyJwtAccessToken } = await import("./jwt-verifier.js");
-  const verified = await verifyJwtAccessToken(raw);
+  const { verifyPlatformAccessToken } = await import("./jwt-verifier.js");
+  const verified = await verifyPlatformAccessToken(raw);
   return {
     userId: verified.userId,
     tenantId: verified.tenantId,

@@ -1,31 +1,26 @@
 import * as jose from "jose";
 import request from "supertest";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { assertMcpEgressAllowed } from "../src/egress-policy.js";
 import { normalizeRequestPath } from "../src/path-normalize.js";
-import {
-  exportPublicJwks,
-  setJwksForTests,
-  signTestAccessToken,
-} from "../src/jwt-verifier.js";
 import { resetRateLimitsForTests } from "../src/rate-limit.js";
 import { createEdgeApp } from "../src/server.js";
 import { routeRequest } from "../src/tenant-router.js";
 import { validateSessionToken } from "../src/validate-token.js";
+import {
+  mintPlatformSessionJwt,
+  setupPlatformJwtEnv,
+  shutdownJwtHarness,
+} from "./support/jwt-harness.js";
 
 const ISSUER = "https://auth.deptcanvas.test";
 const AUDIENCE = "dept-canvas-edge";
-
-let privateKey: CryptoKey;
-let publicJwks: jose.JWTVerifyGetKey;
 
 async function bearerFor(
   claims: Record<string, string>,
   options?: { expired?: boolean },
 ): Promise<string> {
-  const token = await signTestAccessToken(privateKey, claims, {
-    issuer: ISSUER,
-    audience: AUDIENCE,
+  const token = await mintPlatformSessionJwt(claims, {
     expiresInSec: options?.expired ? -120 : 300,
   });
   return `Bearer ${token}`;
@@ -33,15 +28,13 @@ async function bearerFor(
 
 describe("routing.test.ts adversarial", () => {
   beforeAll(async () => {
-    const pair = await jose.generateKeyPair("RS256");
-    privateKey = pair.privateKey;
-    const jwks = await exportPublicJwks(pair.publicKey);
-    publicJwks = jose.createLocalJWKSet(jwks);
-    setJwksForTests(publicJwks);
+    await setupPlatformJwtEnv(ISSUER, AUDIENCE);
     process.env.EDGE_AUTH_MODE = "oidc";
-    process.env.EDGE_JWT_ISSUER = ISSUER;
-    process.env.EDGE_JWT_AUDIENCE = AUDIENCE;
     process.env.NODE_ENV = "test";
+  });
+
+  afterAll(async () => {
+    await shutdownJwtHarness();
   });
 
   afterEach(() => {
@@ -129,6 +122,15 @@ describe("routing.test.ts adversarial", () => {
     expect(() => normalizeRequestPath("/api/../tenant-b/mcp")).toThrow(
       /traversal/i,
     );
+    expect(() => normalizeRequestPath("/api/%2e%2e/tenant-b/mcp")).toThrow(
+      /traversal/i,
+    );
+    expect(() => normalizeRequestPath("/api/%252e%252e/tenant-b/mcp")).toThrow(
+      /traversal/i,
+    );
+    expect(() => normalizeRequestPath("/api/%2f..%2fsecrets")).toThrow(
+      /traversal/i,
+    );
     expect(() =>
       routeRequest(
         { userId: "u", tenantId: "tenant-a", role: "creator" },
@@ -151,5 +153,24 @@ describe("routing.test.ts adversarial", () => {
     const third = await request(app).get("/api/mcp").set("Authorization", auth);
     expect(third.status).toBe(429);
     expect(third.body.error).toBe("rate_limit_exceeded");
+  });
+
+  it("rejects_jwt_signed_with_unknown_key", async () => {
+    const rogue = await jose.generateKeyPair("RS256");
+    const token = await new jose.SignJWT({
+      tenant_id: "tenant-a",
+      role: "tenant_admin",
+    })
+      .setProtectedHeader({ alg: "RS256", kid: "rogue" })
+      .setIssuer(ISSUER)
+      .setAudience(AUDIENCE)
+      .setSubject("attacker")
+      .setIssuedAt()
+      .setExpirationTime("5m")
+      .sign(rogue.privateKey);
+
+    await expect(
+      validateSessionToken(`Bearer ${token}`),
+    ).rejects.toThrow(/failed|invalid/i);
   });
 });

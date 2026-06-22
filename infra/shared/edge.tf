@@ -1,19 +1,3 @@
-variable "project_id" {
-  type = string
-}
-
-variable "region" {
-  type = string
-}
-
-variable "edge_domain" {
-  type = string
-}
-
-variable "rate_limit_rpm" {
-  type = number
-}
-
 resource "google_compute_global_address" "edge" {
   name = "dept-canvas-edge-ip"
 }
@@ -66,4 +50,8 @@ output "edge_ip" {
 
 output "cloud_armor_policy_id" {
   value = google_compute_security_policy.edge_armor.id
+}
+
+output "edge_residency_region" {
+  value = var.region
 }

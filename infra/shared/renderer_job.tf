@@ -1,11 +1,3 @@
-variable "project_id" {
-  type = string
-}
-
-variable "region" {
-  type = string
-}
-
 resource "google_cloud_run_v2_job" "renderer" {
   name     = "dept-canvas-renderer"
   location = var.region

@@ -5,41 +5,14 @@ import { TokenValidationError } from "./validate-token.js";
 export interface JwtVerifierConfig {
   issuer: string;
   audience: string;
+  jwksUri: string;
 }
 
-let platformJwksOverride: jose.JWTVerifyGetKey | undefined;
-let idpJwksOverride: jose.JWTVerifyGetKey | undefined;
-
-/** Platform-issued session tokens (API + SCIM). */
-export function setJwksForTests(jwks: jose.JWTVerifyGetKey | undefined): void {
-  platformJwksOverride = jwks;
-}
-
-/** IdP-issued OIDC id_tokens at login callback. */
-export function setIdpJwksForTests(jwks: jose.JWTVerifyGetKey | undefined): void {
-  idpJwksOverride = jwks;
-}
-
-async function resolvePlatformJwks(): Promise<jose.JWTVerifyGetKey> {
-  if (platformJwksOverride) {
-    return platformJwksOverride;
-  }
-  const jwksUri = process.env.EDGE_JWKS_URI;
-  if (!jwksUri) {
-    throw new TokenValidationError("EDGE_JWKS_URI is not configured");
-  }
-  return jose.createRemoteJWKSet(new URL(jwksUri));
-}
-
-async function resolveIdpJwks(): Promise<jose.JWTVerifyGetKey> {
-  if (idpJwksOverride) {
-    return idpJwksOverride;
-  }
-  const jwksUri = process.env.EDGE_IDP_JWKS_URI ?? process.env.EDGE_JWKS_URI;
-  if (!jwksUri) {
-    throw new TokenValidationError("EDGE_IDP_JWKS_URI is not configured");
-  }
-  return jose.createRemoteJWKSet(new URL(jwksUri));
+export interface VerifiedAccessToken {
+  userId: string;
+  tenantId: string;
+  role: EdgeRole;
+  expiresAt?: number;
 }
 
 function claimString(payload: jose.JWTPayload, key: string): string {
@@ -65,22 +38,16 @@ function claimRole(payload: jose.JWTPayload): EdgeRole {
   return role as EdgeRole;
 }
 
-async function verifyWithJwks(
+async function verifyWithConfig(
   token: string,
-  jwks: jose.JWTVerifyGetKey,
-  config?: Partial<JwtVerifierConfig>,
-): Promise<{ userId: string; tenantId: string; role: EdgeRole; expiresAt?: number }> {
-  const issuer = config?.issuer ?? process.env.EDGE_JWT_ISSUER;
-  const audience = config?.audience ?? process.env.EDGE_JWT_AUDIENCE;
-  if (!issuer || !audience) {
-    throw new TokenValidationError("JWT issuer/audience not configured");
-  }
-
+  config: JwtVerifierConfig,
+): Promise<VerifiedAccessToken> {
+  const jwks = jose.createRemoteJWKSet(new URL(config.jwksUri));
   let payload: jose.JWTPayload;
   try {
     const verified = await jose.jwtVerify(token, jwks, {
-      issuer,
-      audience,
+      issuer: config.issuer,
+      audience: config.audience,
       algorithms: ["RS256", "ES256"],
     });
     payload = verified.payload;
@@ -97,44 +64,39 @@ async function verifyWithJwks(
   };
 }
 
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new TokenValidationError(`${name} is not configured`);
+  }
+  return value;
+}
+
+/** Platform-issued session tokens (edge API, SCIM). */
+export async function verifyPlatformAccessToken(
+  token: string,
+): Promise<VerifiedAccessToken> {
+  return verifyWithConfig(token, {
+    issuer: requireEnv("EDGE_JWT_ISSUER"),
+    audience: requireEnv("EDGE_JWT_AUDIENCE"),
+    jwksUri: requireEnv("EDGE_JWKS_URI"),
+  });
+}
+
+/** IdP-issued OIDC id_tokens at login callback. */
+export async function verifyIdpAccessToken(
+  token: string,
+): Promise<VerifiedAccessToken> {
+  return verifyWithConfig(token, {
+    issuer: requireEnv("EDGE_IDP_JWT_ISSUER"),
+    audience: requireEnv("EDGE_IDP_JWT_AUDIENCE"),
+    jwksUri: requireEnv("EDGE_IDP_JWKS_URI"),
+  });
+}
+
+/** @deprecated Use verifyPlatformAccessToken */
 export async function verifyJwtAccessToken(
   token: string,
-  config?: Partial<JwtVerifierConfig>,
-): Promise<{ userId: string; tenantId: string; role: EdgeRole; expiresAt?: number }> {
-  return verifyWithJwks(token, await resolvePlatformJwks(), config);
-}
-
-export async function verifyIdpJwtAccessToken(
-  token: string,
-  config?: Partial<JwtVerifierConfig>,
-): Promise<{ userId: string; tenantId: string; role: EdgeRole; expiresAt?: number }> {
-  return verifyWithJwks(token, await resolveIdpJwks(), config);
-}
-
-export async function exportPublicJwks(
-  publicKey: CryptoKey,
-): Promise<jose.JSONWebKeySet> {
-  const jwk = await jose.exportJWK(publicKey);
-  return { keys: [{ ...jwk, kid: "test-key", use: "sig", alg: "RS256" }] };
-}
-
-export async function signTestAccessToken(
-  privateKey: CryptoKey,
-  claims: Record<string, string>,
-  options: { issuer: string; audience: string; expiresInSec?: number },
-): Promise<string> {
-  const builder = new jose.SignJWT(claims)
-    .setProtectedHeader({ alg: "RS256", kid: "test-key" })
-    .setIssuer(options.issuer)
-    .setAudience(options.audience)
-    .setSubject(claims.sub ?? "test-user")
-    .setIssuedAt();
-
-  if (options.expiresInSec !== undefined && options.expiresInSec <= 0) {
-    builder.setExpirationTime(Math.floor(Date.now() / 1000) - 60);
-  } else {
-    builder.setExpirationTime(`${options.expiresInSec ?? 300}s`);
-  }
-
-  return builder.sign(privateKey);
+): Promise<VerifiedAccessToken> {
+  return verifyPlatformAccessToken(token);
 }
