@@ -2,6 +2,10 @@ import { escapeHtml } from "../design/Button.js";
 import { IconRail, type IconRailItem } from "../design/IconRail.js";
 import { Panel } from "../design/Panel.js";
 import { TopBar, type TopBarAction } from "../design/TopBar.js";
+import { renderAiPanel } from "./AiPanel.js";
+import { DEFAULT_ADVANCED_CONTROLS } from "./ai/AdvancedControls.js";
+import { type AdvancedGenerationControls, type SimpleGenerationControls } from "./ai/actions.js";
+import { DEFAULT_SIMPLE_CONTROLS } from "./ai/SimpleControls.js";
 import { renderCesdkCanvas } from "./CesdkCanvas.js";
 import { renderDesignAnimateToggle, type EditorMode } from "./DesignAnimateToggle.js";
 import { type CanvasFormatId, renderFormatSwitcher } from "./FormatSwitcher.js";
@@ -18,6 +22,9 @@ export interface EditorScreenState {
   readonly railItems: readonly IconRailItem[];
   readonly activeRailItemId: string;
   readonly layers: readonly EditorLayer[];
+  readonly selectedLayerId: string;
+  readonly aiSimpleControls: SimpleGenerationControls;
+  readonly aiAdvancedControls: AdvancedGenerationControls;
   readonly timeline: TimelineState;
 }
 
@@ -42,14 +49,27 @@ export const defaultEditorScreenState: EditorScreenState = {
   ],
   activeRailItemId: "layers",
   layers: DEFAULT_TIMELINE_STATE.layers,
+  selectedLayerId: "hero-copy",
+  aiSimpleControls: DEFAULT_SIMPLE_CONTROLS,
+  aiAdvancedControls: DEFAULT_ADVANCED_CONTROLS,
   timeline: DEFAULT_TIMELINE_STATE,
 };
 
-function renderLayerList(layers: readonly EditorLayer[]): string {
+function findSelectedLayer(
+  layers: readonly EditorLayer[],
+  selectedLayerId: string,
+): EditorLayer {
+  return layers.find((layer) => layer.id === selectedLayerId) ?? layers[0];
+}
+
+function renderLayerList(
+  layers: readonly EditorLayer[],
+  selectedLayerId: string,
+): string {
   const items = layers
     .map((layer) => {
       const lockBadge = layer.locked ? '<span class="dc-lock-badge">Locked</span>' : "";
-      return `<li data-layer-id="${escapeHtml(layer.id)}" data-locked="${layer.locked ? "true" : "false"}">
+      return `<li data-layer-id="${escapeHtml(layer.id)}" data-locked="${layer.locked ? "true" : "false"}" data-selected="${layer.id === selectedLayerId ? "true" : "false"}">
         <span>${escapeHtml(layer.name)}</span>
         ${lockBadge}
       </li>`;
@@ -62,10 +82,11 @@ function renderLayerList(layers: readonly EditorLayer[]): string {
 export function renderEditorScreen(
   state: EditorScreenState = defaultEditorScreenState,
 ): string {
+  const selectedLayer = findSelectedLayer(state.layers, state.selectedLayerId);
   const leftPanel = Panel({
     region: "left-panel",
     title: "Layers",
-    children: renderLayerList(state.layers),
+    children: renderLayerList(state.layers, selectedLayer.id),
   });
   const canvas = `<main class="dc-canvas-stage dc-editor-stage" data-region="center-canvas" aria-label="Canvas">
     <div class="dc-canvas-toolbar dc-editor-toolbar">
@@ -79,15 +100,14 @@ export function renderEditorScreen(
       })}
     </div>
   </main>`;
-  const selectedLayer = state.layers[0];
   const rightPanel = Panel({
     region: "right-panel",
-    title: "Properties",
-    children: `<div class="dc-property-group" aria-label="Selected layer properties">
-      <h3>${escapeHtml(selectedLayer.name)}</h3>
-      <label><span>Motion</span><input value="${state.mode === "animate" ? "Preset" : "Hidden"}" readonly /></label>
-      <label><span>Lock state</span><input value="${selectedLayer.locked ? "Locked" : "Editable"}" readonly /></label>
-    </div>`,
+    title: "AI assist",
+    children: renderAiPanel({
+      selectedLayer,
+      simple: state.aiSimpleControls,
+      advanced: state.aiAdvancedControls,
+    }),
   });
   const timeline = Panel({
     region: "bottom-timeline",
