@@ -11,10 +11,14 @@ export interface JwtTrustDomain {
 
 let platformDomain: JwtTrustDomain | undefined;
 let idpDomain: JwtTrustDomain | undefined;
+let breakGlassDomain: JwtTrustDomain | undefined;
 let platformServer: Server | undefined;
 let idpServer: Server | undefined;
+let breakGlassServer: Server | undefined;
 
-async function startJwksServer(publicKey: CryptoKey): Promise<{ uri: string; server: Server }> {
+async function startJwksServer(
+  publicKey: CryptoKey,
+): Promise<{ uri: string; server: Server }> {
   const jwk = await jose.exportJWK(publicKey);
   const body = JSON.stringify({
     keys: [{ ...jwk, kid: "test-key", use: "sig", alg: "RS256" }],
@@ -44,23 +48,6 @@ async function startJwksServer(publicKey: CryptoKey): Promise<{ uri: string; ser
   });
 }
 
-async function buildDomain(
-  issuer: string,
-  audience: string,
-): Promise<JwtTrustDomain> {
-  const pair = await jose.generateKeyPair("RS256");
-  const { uri, server } = await startJwksServer(pair.publicKey);
-  return {
-    issuer,
-    audience,
-    privateKey: pair.privateKey,
-    publicKey: pair.publicKey,
-    jwksUri: uri,
-    // keep server reachable via closure — stored separately by caller
-    ...(void server),
-  };
-}
-
 export async function setupPlatformJwtEnv(
   issuer = "https://platform.deptcanvas.test",
   audience = "dept-canvas-edge",
@@ -68,7 +55,7 @@ export async function setupPlatformJwtEnv(
   if (platformDomain) {
     return platformDomain;
   }
-  const pair = await jose.generateKeyPair("RS256");
+  const pair = await jose.generateKeyPair("RS256", { extractable: true });
   const { uri, server } = await startJwksServer(pair.publicKey);
   platformServer = server;
   platformDomain = {
@@ -81,6 +68,8 @@ export async function setupPlatformJwtEnv(
   process.env.EDGE_JWT_ISSUER = issuer;
   process.env.EDGE_JWT_AUDIENCE = audience;
   process.env.EDGE_JWKS_URI = uri;
+  const pem = await jose.exportPKCS8(pair.privateKey);
+  process.env.EDGE_SESSION_SIGNING_KEY_PEM = pem;
   return platformDomain;
 }
 
@@ -91,7 +80,7 @@ export async function setupIdpJwtEnv(
   if (idpDomain) {
     return idpDomain;
   }
-  const pair = await jose.generateKeyPair("RS256");
+  const pair = await jose.generateKeyPair("RS256", { extractable: true });
   const { uri, server } = await startJwksServer(pair.publicKey);
   idpServer = server;
   idpDomain = {
@@ -105,6 +94,29 @@ export async function setupIdpJwtEnv(
   process.env.EDGE_IDP_JWT_AUDIENCE = audience;
   process.env.EDGE_IDP_JWKS_URI = uri;
   return idpDomain;
+}
+
+export async function setupBreakGlassJwtEnv(
+  issuer = "https://break-glass.deptcanvas.test",
+  audience = "dept-canvas-break-glass",
+): Promise<JwtTrustDomain> {
+  if (breakGlassDomain) {
+    return breakGlassDomain;
+  }
+  const pair = await jose.generateKeyPair("RS256", { extractable: true });
+  const { uri, server } = await startJwksServer(pair.publicKey);
+  breakGlassServer = server;
+  breakGlassDomain = {
+    issuer,
+    audience,
+    privateKey: pair.privateKey,
+    publicKey: pair.publicKey,
+    jwksUri: uri,
+  };
+  process.env.EDGE_BREAK_GLASS_ISSUER = issuer;
+  process.env.EDGE_BREAK_GLASS_AUDIENCE = audience;
+  process.env.EDGE_BREAK_GLASS_JWKS_URI = uri;
+  return breakGlassDomain;
 }
 
 export async function mintPlatformSessionJwt(
@@ -149,6 +161,21 @@ export async function mintIdpIdToken(
   return builder.sign(domain.privateKey);
 }
 
+export async function mintBreakGlassToken(claims: {
+  sub: string;
+  tenant_id: string;
+}): Promise<string> {
+  const domain = breakGlassDomain ?? (await setupBreakGlassJwtEnv());
+  return new jose.SignJWT({ break_glass: true, tenant_id: claims.tenant_id })
+    .setProtectedHeader({ alg: "RS256", kid: "test-key" })
+    .setIssuer(domain.issuer)
+    .setAudience(domain.audience)
+    .setSubject(claims.sub)
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(domain.privateKey);
+}
+
 export async function shutdownJwtHarness(): Promise<void> {
   await Promise.all([
     platformServer
@@ -157,9 +184,14 @@ export async function shutdownJwtHarness(): Promise<void> {
     idpServer
       ? new Promise<void>((resolve) => idpServer!.close(() => resolve()))
       : Promise.resolve(),
+    breakGlassServer
+      ? new Promise<void>((resolve) => breakGlassServer!.close(() => resolve()))
+      : Promise.resolve(),
   ]);
   platformServer = undefined;
   idpServer = undefined;
+  breakGlassServer = undefined;
   platformDomain = undefined;
   idpDomain = undefined;
+  breakGlassDomain = undefined;
 }

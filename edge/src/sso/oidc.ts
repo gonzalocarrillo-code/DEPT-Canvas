@@ -1,4 +1,4 @@
-import { verifyIdpJwtAccessToken } from "../jwt-verifier.js";
+import { verifyIdpAccessToken } from "../jwt-verifier.js";
 import type { SessionToken } from "../validate-token.js";
 import { TokenValidationError } from "../validate-token.js";
 
@@ -17,7 +17,7 @@ export async function handleOidcCallback(
     throw new TokenValidationError("OIDC id_token is invalid");
   }
 
-  const verified = await verifyIdpJwtAccessToken(input.id_token);
+  const verified = await verifyIdpAccessToken(input.id_token);
   return {
     userId: verified.userId,
     tenantId: verified.tenantId,

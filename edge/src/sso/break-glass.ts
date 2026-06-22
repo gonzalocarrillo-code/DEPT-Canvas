@@ -6,25 +6,6 @@ export interface BreakGlassClaims {
   tenantId: string;
 }
 
-let breakGlassJwksOverride: jose.JWTVerifyGetKey | undefined;
-
-export function setBreakGlassJwksForTests(
-  jwks: jose.JWTVerifyGetKey | undefined,
-): void {
-  breakGlassJwksOverride = jwks;
-}
-
-async function resolveBreakGlassJwks(): Promise<jose.JWTVerifyGetKey> {
-  if (breakGlassJwksOverride) {
-    return breakGlassJwksOverride;
-  }
-  const jwksUri = process.env.EDGE_BREAK_GLASS_JWKS_URI;
-  if (!jwksUri) {
-    throw new TokenValidationError("Break-glass JWKS is not configured");
-  }
-  return jose.createRemoteJWKSet(new URL(jwksUri));
-}
-
 export async function verifyBreakGlassToken(
   authorization: string | undefined,
 ): Promise<BreakGlassClaims> {
@@ -38,11 +19,12 @@ export async function verifyBreakGlassToken(
 
   const issuer = process.env.EDGE_BREAK_GLASS_ISSUER;
   const audience = process.env.EDGE_BREAK_GLASS_AUDIENCE;
-  if (!issuer || !audience) {
+  const jwksUri = process.env.EDGE_BREAK_GLASS_JWKS_URI;
+  if (!issuer || !audience || !jwksUri) {
     throw new TokenValidationError("Break-glass issuer/audience not configured");
   }
 
-  const jwks = await resolveBreakGlassJwks();
+  const jwks = jose.createRemoteJWKSet(new URL(jwksUri));
   let payload: jose.JWTPayload;
   try {
     const verified = await jose.jwtVerify(match[1], jwks, {
@@ -69,19 +51,4 @@ export async function verifyBreakGlassToken(
   }
 
   return { userId: sub, tenantId };
-}
-
-export async function signTestBreakGlassToken(
-  privateKey: CryptoKey,
-  claims: { sub: string; tenant_id: string },
-  options: { issuer: string; audience: string },
-): Promise<string> {
-  return new jose.SignJWT({ break_glass: true, tenant_id: claims.tenant_id })
-    .setProtectedHeader({ alg: "RS256", kid: "test-key" })
-    .setIssuer(options.issuer)
-    .setAudience(options.audience)
-    .setSubject(claims.sub)
-    .setIssuedAt()
-    .setExpirationTime("5m")
-    .sign(privateKey);
 }

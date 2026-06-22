@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
+import * as jose from "jose";
 import { writeBreakGlassAudit } from "../audit/break-glass-audit.js";
-import { signTestAccessToken } from "../jwt-verifier.js";
 import type { SessionToken } from "../validate-token.js";
 import { TokenValidationError } from "../validate-token.js";
 import { verifyBreakGlassToken } from "./break-glass.js";
@@ -12,22 +12,7 @@ export interface AuthExchangeResult {
   session: SessionToken;
 }
 
-let sessionPrivateKey: CryptoKey | undefined;
-
-export async function configureSessionSigningForTests(
-  pair: CryptoKeyPair,
-): Promise<void> {
-  sessionPrivateKey = pair.privateKey;
-}
-
-export function clearSessionSigningForTests(): void {
-  sessionPrivateKey = undefined;
-}
-
 async function resolveSessionPrivateKey(): Promise<CryptoKey> {
-  if (sessionPrivateKey) {
-    return sessionPrivateKey;
-  }
   const pem = process.env.EDGE_SESSION_SIGNING_KEY_PEM;
   if (!pem) {
     throw new TokenValidationError("Session signing key is not configured");
@@ -55,15 +40,17 @@ async function issueSessionJwt(session: SessionToken): Promise<string> {
     throw new TokenValidationError("JWT issuer/audience not configured");
   }
   const privateKey = await resolveSessionPrivateKey();
-  return signTestAccessToken(
-    privateKey,
-    {
-      sub: session.userId,
-      tenant_id: session.tenantId,
-      role: session.role,
-    },
-    { issuer, audience },
-  );
+  return new jose.SignJWT({
+    tenant_id: session.tenantId,
+    role: session.role,
+  })
+    .setProtectedHeader({ alg: "RS256", kid: "test-key" })
+    .setIssuer(issuer)
+    .setAudience(audience)
+    .setSubject(session.userId)
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(privateKey);
 }
 
 export async function handleSamlAcsRequest(
