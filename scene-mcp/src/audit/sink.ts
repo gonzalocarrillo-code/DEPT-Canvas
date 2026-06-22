@@ -85,8 +85,16 @@ function resolveSinkPath(): string {
   if (process.env.AUDIT_SINK_PATH) {
     return process.env.AUDIT_SINK_PATH;
   }
+  if (process.env.VITEST === "true") {
+    const worker = process.env.VITEST_WORKER_ID ?? "0";
+    return join(tmpdir(), `dept-canvas-test-audit-w${worker}.ndjson`);
+  }
   if (process.env.NODE_ENV === "test") {
     return join(tmpdir(), "dept-canvas-test-audit.ndjson");
+  }
+  if ((process.env.SCENE_STORAGE_BACKEND ?? "local") === "local") {
+    const root = process.env.SCENE_STORAGE_LOCAL_DIR ?? ".local-storage";
+    return join(root, "audit", "audit.ndjson");
   }
   return DEFAULT_AUDIT_SINK_PATH;
 }

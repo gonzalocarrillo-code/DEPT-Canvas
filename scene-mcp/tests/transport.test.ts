@@ -1,6 +1,16 @@
 import { describe, expect, it, afterEach } from "vitest";
 import request from "supertest";
+import { createDevToken } from "../src/auth/verify-token.js";
 import { createSceneMcpApp } from "../src/index.js";
+
+function devAuthHeader(tenantId = "tenant-test"): string {
+  const token = createDevToken({
+    sub: "transport-test",
+    tenant_id: tenantId,
+    role: "creator",
+  });
+  return `Bearer ${token}`;
+}
 
 function parseSseJson(text: string): unknown {
   for (const line of text.split("\n")) {
@@ -26,6 +36,7 @@ describe("Streamable HTTP transport", () => {
     const initRes = await request(app)
       .post("/mcp")
       .set("Accept", "application/json, text/event-stream")
+      .set("Authorization", devAuthHeader())
       .send({
         jsonrpc: "2.0",
         id: 1,
@@ -47,6 +58,7 @@ describe("Streamable HTTP transport", () => {
     const initRes = await request(app)
       .post("/mcp")
       .set("Accept", "application/json, text/event-stream")
+      .set("Authorization", devAuthHeader())
       .send({
         jsonrpc: "2.0",
         id: 1,
@@ -63,6 +75,7 @@ describe("Streamable HTTP transport", () => {
     const listRes = await request(app)
       .post("/mcp")
       .set("Accept", "application/json, text/event-stream")
+      .set("Authorization", devAuthHeader())
       .set("Mcp-Session-Id", sessionId)
       .send({
         jsonrpc: "2.0",
@@ -82,6 +95,7 @@ describe("Streamable HTTP transport", () => {
     const initRes = await request(app)
       .post("/mcp")
       .set("Accept", "application/json, text/event-stream")
+      .set("Authorization", devAuthHeader())
       .send({
         jsonrpc: "2.0",
         id: 1,

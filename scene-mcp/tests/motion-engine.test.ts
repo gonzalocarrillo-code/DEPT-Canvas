@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { clearAuditLogForTests, readAuditLog } from "../src/audit/audit-writer.js";
+import { resetAuditSinkForTests } from "../src/audit/sink.js";
 import { clearJobRegistry, createJob, releaseJob } from "../src/engine/job-registry.js";
 import { CesdkMotionEngine } from "../src/motion/cesdk-motion-engine.js";
 import { getMotionEngine, setMotionEngineForTests } from "../src/motion/engine-registry.js";
@@ -37,6 +38,7 @@ function collectSourceFiles(dir: string, acc: string[] = []): string[] {
 describe("motion-engine.test.ts", () => {
   afterEach(async () => {
     clearJobRegistry();
+    resetAuditSinkForTests();
     await clearAuditLogForTests();
     resetTier2CandidateMetricForTests();
     setMotionEngineForTests(undefined);
@@ -138,6 +140,9 @@ describe("motion-engine.test.ts", () => {
         ],
       };
 
+      resetAuditSinkForTests();
+      await clearAuditLogForTests();
+
       await expect(
         getMotionEngine().applyIntent(
           job.id,
@@ -152,6 +157,9 @@ describe("motion-engine.test.ts", () => {
         (entry) => entry.lockDecision?.outcome === "rejected",
       );
       expect(rejections.length).toBeGreaterThanOrEqual(1);
+      expect(rejections.some((entry) => entry.tool === "apply_intent")).toBe(
+        true,
+      );
     } finally {
       releaseJob(job.id);
     }

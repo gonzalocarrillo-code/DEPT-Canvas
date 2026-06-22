@@ -12,6 +12,7 @@ out/
 __pycache__/
 .pytest_cache/
 .venv/
+.local-storage/
 uv.lock
 *.mp4
 *.png

@@ -3,6 +3,9 @@ import type { Express, Request, Response } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { AuthError } from "../auth/verify-token.js";
+import { contextFromRequest } from "../auth/tenant-context.js";
+import { requestContextStorage } from "../auth/request-context.js";
 import { McpSessionStore } from "./session-store.js";
 
 function sessionHeader(req: IncomingMessage): string | undefined {
@@ -11,6 +14,27 @@ function sessionHeader(req: IncomingMessage): string | undefined {
     return raw[0];
   }
   return raw;
+}
+
+async function runWithRequestAuth<T>(
+  req: Request,
+  res: Response,
+  fn: () => Promise<T>,
+): Promise<T | undefined> {
+  try {
+    const ctx = await contextFromRequest(req);
+    return await requestContextStorage.run(ctx, fn);
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(401).json({
+        jsonrpc: "2.0",
+        error: { code: -32001, message: error.message },
+        id: null,
+      });
+      return undefined;
+    }
+    throw error;
+  }
 }
 
 export function mountMcpRoutes(
@@ -26,40 +50,51 @@ export function mountMcpRoutes(
 
       if (sessionId && sessions.has(sessionId)) {
         transport = sessions.get(sessionId);
-      } else if (!sessionId && isInitializeRequest(req.body)) {
-        transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => sessions.createSessionId(),
-          onsessioninitialized: (id) => {
-            if (transport) {
-              sessions.set(id, transport);
-            }
-          },
+        const handled = await runWithRequestAuth(req, res, async () => {
+          await transport!.handleRequest(req, res, req.body);
         });
-
-        transport.onclose = () => {
-          const sid = transport?.sessionId;
-          if (sid) {
-            sessions.delete(sid);
-          }
-        };
-
-        const server = createServer();
-        await server.connect(transport);
-        await transport.handleRequest(req, res, req.body);
-        return;
-      } else {
-        res.status(400).json({
-          jsonrpc: "2.0",
-          error: {
-            code: -32000,
-            message: "Bad Request: No valid session ID provided",
-          },
-          id: null,
-        });
+        if (handled === undefined) {
+          return;
+        }
         return;
       }
 
-      await transport!.handleRequest(req, res, req.body);
+      if (!sessionId && isInitializeRequest(req.body)) {
+        const handled = await runWithRequestAuth(req, res, async () => {
+          transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: () => sessions.createSessionId(),
+            onsessioninitialized: (id) => {
+              if (transport) {
+                sessions.set(id, transport);
+              }
+            },
+          });
+
+          transport.onclose = () => {
+            const sid = transport?.sessionId;
+            if (sid) {
+              sessions.delete(sid);
+            }
+          };
+
+          const server = createServer();
+          await server.connect(transport);
+          await transport.handleRequest(req, res, req.body);
+        });
+        if (handled === undefined) {
+          return;
+        }
+        return;
+      }
+
+      res.status(400).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: "Bad Request: No valid session ID provided",
+        },
+        id: null,
+      });
     } catch (error) {
       if (!res.headersSent) {
         res.status(500).json({

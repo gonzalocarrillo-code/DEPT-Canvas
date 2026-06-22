@@ -41,6 +41,8 @@ export async function startSceneMcpHttp(
     });
   });
 
+  console.error(`scene-mcp listening on http://${host}:${port}/mcp`);
+
   return {
     app,
     close: async () => {
@@ -50,6 +52,20 @@ export async function startSceneMcpHttp(
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const { config: loadEnv } = await import("dotenv");
+  const path = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const repoRoot = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../..",
+  );
+  for (const envPath of [
+    path.join(repoRoot, ".env"),
+    path.join(process.cwd(), ".env"),
+  ]) {
+    loadEnv({ path: envPath });
+  }
+
   startSceneMcpHttp().then(({ close }) => {
     process.on("SIGINT", () => {
       void close().then(() => process.exit(0));

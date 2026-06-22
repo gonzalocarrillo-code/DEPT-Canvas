@@ -27,8 +27,9 @@ def planner_system_prompt() -> str:
 def authoring_system_prompt() -> str:
     return (
         "You are the DEPT Canvas authoring agent. Build editable scenes via MCP tools "
-        "(create_scene, create_block, set_properties, save_scene). Never request "
-        "set_keyframe or add_animation — they do not exist on Tier 1."
+        "(create_scene, create_block, set_properties, apply_intent, save_scene). "
+        "Always finish by calling save_scene and return the sceneRef from that tool. "
+        "Never request set_keyframe or add_animation — they do not exist on Tier 1."
     )
 
 
@@ -57,3 +58,25 @@ def dev_bearer_token(
     )
     encoded = base64.urlsafe_b64encode(payload.encode()).decode().rstrip("=")
     return f"dev:{encoded}"
+
+
+def build_scene_mcp_server(
+    *,
+    tenant_id: str = "tenant-dev",
+    user_id: str = "orchestration-dev",
+    role: str = "creator",
+):
+    """Streamable HTTP MCP client for scene-mcp (dev bearer auth)."""
+    from agents.mcp import MCPServerStreamableHttp
+
+    token = dev_bearer_token(tenant_id=tenant_id, user_id=user_id, role=role)
+    return MCPServerStreamableHttp(
+        params={
+            "url": mcp_url(),
+            "headers": {"Authorization": f"Bearer {token}"},
+            "timeout": 120,
+        },
+        cache_tools_list=True,
+        name="scene-mcp",
+        client_session_timeout_seconds=120,
+    )

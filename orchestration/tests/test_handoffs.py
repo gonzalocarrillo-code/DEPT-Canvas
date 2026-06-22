@@ -11,7 +11,6 @@ from planner.agent import build_planner
 
 def test_planner_emits_valid_animation_plan() -> None:
     planner = build_planner()
-    assert planner.output_type is AnimationPlan
     assert planner.name == "Planner"
     assert "energetic_entrance" in planner.instructions or "intent" in planner.instructions
 

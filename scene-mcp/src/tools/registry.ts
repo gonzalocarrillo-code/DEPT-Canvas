@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { ToolRegistration } from "../server.js";
 import type { CallerContext } from "../auth/tenant-context.js";
+import { getRequestCallerContext } from "../auth/request-context.js";
 import { createScene } from "./create-scene.js";
 import { createBlock } from "./create-block.js";
 import { setProperties } from "./set-properties.js";
@@ -53,7 +54,7 @@ function wrapTool<S extends z.ZodObject<z.ZodRawShape>>(
     description: `DEPT Canvas tool: ${name}`,
     inputSchema: schema.shape,
     handler: async (input) => {
-      const ctx = contextResolver();
+      const ctx = getRequestCallerContext(contextResolver);
       const parsed = schema.parse(input);
       const result = await handler(ctx, parsed);
       return {
