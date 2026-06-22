@@ -75,7 +75,7 @@ export function buildRenderOutputs(
 }
 
 export function renderCostEstimate(estimate: VariationCostEstimate): string {
-  return `<section class="dc-variation-estimate" data-generation-gate="before-generate" aria-label="Batch estimate">
+  return `<section class="dc-variation-estimate" data-generation-gate="before-generate" data-estimate-visible="true" data-estimate-eta-sec="${estimate.etaSec}" aria-label="Batch estimate">
     <div>
       <span class="dc-estimate-value">${escapeHtml(String(estimate.count))}</span>
       <span>variants</span>

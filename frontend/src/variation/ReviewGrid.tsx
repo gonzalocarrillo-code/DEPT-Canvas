@@ -25,15 +25,27 @@ export function canPushToDelivery(state: ReviewGridState): boolean {
   return state.approverApproved && state.items.length > 0 && state.items.every((item) => item.status === "done");
 }
 
+export function canApproveAll(state: ReviewGridState): boolean {
+  return state.items.length > 0 && state.items.every((item) => item.status === "done");
+}
+
+export function approveAll(state: ReviewGridState): ReviewGridState {
+  return {
+    ...state,
+    approverApproved: canApproveAll(state),
+  };
+}
+
 export function renderReviewGrid(state: ReviewGridState): string {
   const rows = state.items.map(renderReviewRow).join("");
+  const approveAllDisabled = !canApproveAll(state);
   const pushDisabled = !canPushToDelivery(state);
 
   return `<section class="dc-review-grid" aria-label="Batch review">
     <header class="dc-review-grid__header">
       <h2>Batch review</h2>
       <div class="dc-review-grid__actions">
-        ${Button({ label: "Approve all", tone: "secondary" })}
+        <span data-review-action="approve-all" data-approve-all-enabled="${approveAllDisabled ? "false" : "true"}">${Button({ label: "Approve all", tone: "secondary", disabled: approveAllDisabled })}</span>
         ${Button({ label: "Push to delivery", tone: "primary", disabled: pushDisabled })}
       </div>
     </header>

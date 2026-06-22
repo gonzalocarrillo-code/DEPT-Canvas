@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  createDashboardNavGraph,
   DEFAULT_DASHBOARD_INTERACTION_LIMIT,
   defaultDashboardState,
   getMasterSearchPath,
   renderDashboardScreen,
   searchDashboardAssets,
   searchDashboardMasters,
+  shortestDashboardPathLength,
 } from "../src/dashboard/DashboardScreen.js";
 
 describe("P3-T5 workspace dashboard", () => {
@@ -25,6 +27,22 @@ describe("P3-T5 workspace dashboard", () => {
 
     expect(markup).toContain('data-master-id="master-solar-hero"');
     expect(markup).toContain('data-reach-interactions="2"');
+  });
+
+  it("derives reach from the navigation graph", () => {
+    const state = {
+      search: {
+        query: "solar hero",
+      },
+    };
+    const graph = createDashboardNavGraph({
+      ...defaultDashboardState,
+      search: state.search,
+    });
+
+    expect(shortestDashboardPathLength(graph, "dashboard", "asset:master-solar-hero")).toBe(2);
+    expect(getMasterSearchPath("solar hero")?.interactions).toBe(2);
+    expect(getMasterSearchPath("", { recentAssetIds: ["master-solar-hero"] })?.interactions).toBe(1);
   });
 
   it("groups projects by brand workspace", () => {

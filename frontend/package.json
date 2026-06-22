@@ -9,6 +9,9 @@
     "lint": "echo 'lint: frontend (no-op)'",
     "test": "vitest run tests/*.spec.ts"
   },
+  "dependencies": {
+    "@cesdk/cesdk-js": "^1.76.1"
+  },
   "devDependencies": {
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"

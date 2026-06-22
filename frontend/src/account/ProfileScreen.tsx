@@ -1,4 +1,4 @@
-import type { Role } from "../admin/UserRoleScreen.js";
+import type { Role } from "../auth/rbac.js";
 import { Button, escapeHtml } from "../design/Button.js";
 
 export interface ProfileScreenState {

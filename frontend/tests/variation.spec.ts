@@ -8,6 +8,7 @@ import {
   renderStudioScreen,
 } from "../src/variation/StudioScreen.js";
 import {
+  approveAll,
   canPushToDelivery,
   renderReviewGrid,
   type BatchReviewItem,
@@ -25,11 +26,30 @@ describe("P3-T4 variation studio", () => {
 
     expect(estimate.generationCount).toBe(4);
     expect(estimate.count).toBe(16);
+    expect(estimate.etaSec).toBe(80);
     expect(estimate.outputs).toHaveLength(16);
     expect(markup).toContain('data-generation-gate="before-generate"');
+    expect(markup).toContain(`data-estimate-eta-sec="${estimate.etaSec}"`);
     expect(markup).toContain(`<span class="dc-estimate-value">${estimate.count}</span>`);
     expect(markup).toContain(`<span class="dc-estimate-value">${formatUsd(estimate.costUsd)}</span>`);
+    expect(markup).toContain(`<span class="dc-estimate-value">${estimate.etaSec} sec</span>`);
     expect(markup.indexOf("estimated cost")).toBeLessThan(markup.indexOf("Generate batch"));
+  });
+
+  it("disables generate until the estimate is visible", () => {
+    const waitingForEstimate = renderStudioScreen({
+      ...defaultStudioState,
+      estimateVisible: false,
+    });
+    const readyToGenerate = renderStudioScreen({
+      ...defaultStudioState,
+      estimateVisible: true,
+    });
+
+    expect(waitingForEstimate).toContain('data-generation-gate="estimate-required"');
+    expect(waitingForEstimate).toContain('aria-label="Generate batch" disabled');
+    expect(readyToGenerate).toContain('data-generation-gate="before-generate"');
+    expect(readyToGenerate).not.toContain('aria-label="Generate batch" disabled');
   });
 
   it("keeps push-to-delivery disabled until an approver approves", () => {
@@ -42,7 +62,10 @@ describe("P3-T4 variation studio", () => {
       approverApproved: true,
     };
 
+    expect(approveAll(waitingForApprover).approverApproved).toBe(true);
     expect(canPushToDelivery(waitingForApprover)).toBe(false);
+    expect(renderReviewGrid(waitingForApprover)).toContain('data-review-action="approve-all"');
+    expect(renderReviewGrid(waitingForApprover)).toContain('data-approve-all-enabled="true"');
     expect(renderReviewGrid(waitingForApprover)).toContain(
       'aria-label="Push to delivery" disabled',
     );

@@ -1,35 +1,20 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { renderProfileScreen } from "../src/account/ProfileScreen.js";
 import { renderTenantSettingsScreen } from "../src/admin/TenantSettingsScreen.js";
 import {
   canTriggerCreatorAction,
-  RBAC_ROLES,
   renderUserRoleScreen,
-  type Role,
   type UserRoleScreenState,
 } from "../src/admin/UserRoleScreen.js";
+import {
+  assertFrontendCan,
+  capabilitiesForRole,
+  RBAC_ROLES,
+  ROLE_CAPABILITIES,
+  type Role,
+} from "../src/auth/rbac.js";
 import { renderLoginScreen } from "../src/auth/LoginScreen.js";
-
-function assertFrontendCan(role: Role, capability: "scene:create"): void {
-  const capabilitiesByRole = {
-    viewer: ["scene:read"],
-    creator: ["scene:read", "scene:create", "scene:write"],
-    brand_owner: ["scene:read", "scene:create", "scene:write", "brand:manage"],
-    approver: ["scene:read", "content:approve"],
-    tenant_admin: [
-      "scene:read",
-      "scene:create",
-      "scene:write",
-      "brand:manage",
-      "content:approve",
-      "tenant:admin",
-    ],
-  } satisfies Record<Role, readonly string[]>;
-
-  if (!capabilitiesByRole[role].includes(capability)) {
-    throw new Error(`Role '${role}' is not permitted capability '${capability}'`);
-  }
-}
 
 describe("P3-T6 auth screens", () => {
   it("renders SSO login without password storage", () => {
@@ -52,6 +37,17 @@ describe("P3-T6 auth screens", () => {
     expect(tenantSettings).toContain('data-sso-protocol="oidc"');
   });
 
+  it("ships styles for auth account and admin screens", () => {
+    const css = readFileSync(new URL("../src/design/tokens.css", import.meta.url), "utf8");
+
+    expect(css).toContain(".dc-auth-screen");
+    expect(css).toContain(".dc-auth-provider");
+    expect(css).toContain(".dc-account-screen");
+    expect(css).toContain(".dc-account-summary");
+    expect(css).toContain(".dc-admin-screen");
+    expect(css).toContain(".dc-role-list");
+  });
+
   it("role list matches viewer/creator/brand_owner/approver/tenant_admin", () => {
     const rolesFromFrontendContract: readonly Role[] = RBAC_ROLES;
 
@@ -68,12 +64,13 @@ describe("P3-T6 auth screens", () => {
     for (const role of RBAC_ROLES) {
       expect(markup).toContain(`data-rbac-role="${role}"`);
     }
+    expect(capabilitiesForRole("tenant_admin")).toBe(ROLE_CAPABILITIES.tenant_admin);
   });
 
   it("a viewer cannot trigger creator actions from frontend state", () => {
     const viewerState: UserRoleScreenState = {
       currentUserRole: "viewer",
-      currentUserCapabilities: ["scene:read"],
+      currentUserCapabilities: capabilitiesForRole("viewer"),
       members: [],
     };
 

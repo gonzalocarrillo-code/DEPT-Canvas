@@ -1,4 +1,4 @@
-import type { Capability } from "./UserRoleScreen.js";
+import type { Capability } from "../auth/rbac.js";
 import { Button, escapeHtml } from "../design/Button.js";
 
 export interface TenantSettingsScreenState {

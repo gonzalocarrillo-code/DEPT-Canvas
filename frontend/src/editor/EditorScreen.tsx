@@ -23,6 +23,7 @@ export interface EditorScreenState {
   readonly activeRailItemId: string;
   readonly layers: readonly EditorLayer[];
   readonly selectedLayerId: string;
+  readonly layerBlockIds: Readonly<Record<string, string>>;
   readonly aiSimpleControls: SimpleGenerationControls;
   readonly aiAdvancedControls: AdvancedGenerationControls;
   readonly timeline: TimelineState;
@@ -50,6 +51,11 @@ export const defaultEditorScreenState: EditorScreenState = {
   activeRailItemId: "layers",
   layers: DEFAULT_TIMELINE_STATE.layers,
   selectedLayerId: "hero-copy",
+  layerBlockIds: {
+    logo: "logo",
+    "hero-copy": "hero-copy",
+    "product-image": "product-image",
+  },
   aiSimpleControls: DEFAULT_SIMPLE_CONTROLS,
   aiAdvancedControls: DEFAULT_ADVANCED_CONTROLS,
   timeline: DEFAULT_TIMELINE_STATE,
@@ -97,6 +103,8 @@ export function renderEditorScreen(
       ${renderCesdkCanvas({
         activeFormat: state.activeFormat,
         sceneRef: state.sceneRef,
+        selectedLayerId: selectedLayer.id,
+        layerBlockIds: state.layerBlockIds,
       })}
     </div>
   </main>`;

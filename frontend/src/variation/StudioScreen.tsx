@@ -22,6 +22,7 @@ export interface StudioScreenState {
   readonly matrix: VariationMatrix;
   readonly reviewItems: readonly BatchReviewItem[];
   readonly approverApproved: boolean;
+  readonly estimateVisible: boolean;
 }
 
 export const DEFAULT_VARIATION_SIZES: readonly SizePreset[] = [
@@ -54,17 +55,21 @@ export const defaultStudioState: StudioScreenState = {
     { id: "v-003", name: "Last chance 1:1", size: "1:1", durationSec: 15, status: "queued" },
   ],
   approverApproved: false,
+  estimateVisible: true,
 };
 
 export function renderStudioScreen(state: StudioScreenState = defaultStudioState): string {
   const estimate = estimateVariationBatch(state.matrix);
+  const estimateMarkup = state.estimateVisible
+    ? renderCostEstimate(estimate)
+    : '<section class="dc-variation-estimate" data-generation-gate="estimate-required" data-estimate-visible="false" aria-label="Batch estimate">Estimate required before generate</section>';
   const setup = Panel({
     region: "variation-setup",
     title: "Variation studio",
     children: `${renderAxisEditor({ layers: state.layers, axes: state.axes })}
-      ${renderCostEstimate(estimate)}
+      ${estimateMarkup}
       <div class="dc-generation-actions">
-        ${Button({ label: "Generate batch", tone: "primary" })}
+        ${Button({ label: "Generate batch", tone: "primary", disabled: !state.estimateVisible })}
       </div>`,
   });
   const review = renderReviewGrid({

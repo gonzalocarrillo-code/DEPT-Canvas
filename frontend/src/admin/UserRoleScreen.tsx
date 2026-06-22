@@ -1,30 +1,20 @@
 import { escapeHtml } from "../design/Button.js";
+import {
+  capabilitiesForRole,
+  hasCapabilityForRole,
+  RBAC_ROLES,
+  ROLE_LABELS,
+  type Capability,
+  type Role,
+} from "../auth/rbac.js";
 
-export const RBAC_ROLES = [
-  "viewer",
-  "creator",
-  "brand_owner",
-  "approver",
-  "tenant_admin",
-] as const;
-
-export type Role = (typeof RBAC_ROLES)[number];
-
-export type Capability =
-  | "scene:read"
-  | "scene:create"
-  | "scene:write"
-  | "brand:manage"
-  | "content:approve"
-  | "tenant:admin";
-
-export const ROLE_LABELS: Record<Role, string> = {
-  viewer: "Viewer",
-  creator: "Creator",
-  brand_owner: "Brand owner",
-  approver: "Approver",
-  tenant_admin: "Tenant admin",
-};
+export {
+  capabilitiesForRole,
+  RBAC_ROLES,
+  ROLE_LABELS,
+  type Capability,
+  type Role,
+} from "../auth/rbac.js";
 
 export interface TeamMember {
   readonly id: string;
@@ -41,14 +31,7 @@ export interface UserRoleScreenState {
 
 export const defaultUserRoleState: UserRoleScreenState = {
   currentUserRole: "tenant_admin",
-  currentUserCapabilities: [
-    "scene:read",
-    "scene:create",
-    "scene:write",
-    "brand:manage",
-    "content:approve",
-    "tenant:admin",
-  ],
+  currentUserCapabilities: capabilitiesForRole("tenant_admin"),
   members: [
     {
       id: "user-1",
@@ -79,7 +62,8 @@ export function hasCapability(
 }
 
 export function canTriggerCreatorAction(state: UserRoleScreenState): boolean {
-  return hasCapability(state.currentUserCapabilities, "scene:create");
+  return hasCapability(state.currentUserCapabilities, "scene:create") &&
+    hasCapabilityForRole(state.currentUserRole, "scene:create");
 }
 
 function renderRoleOptions(selectedRole: Role): string {

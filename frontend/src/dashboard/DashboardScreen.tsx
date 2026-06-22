@@ -65,6 +65,10 @@ export interface DashboardSearchPath {
   readonly interactions: number;
 }
 
+export interface DashboardNavGraph {
+  readonly edges: Readonly<Record<string, readonly string[]>>;
+}
+
 export type DashboardStateInput = Partial<
   Pick<DashboardState, "workspaces" | "recentAssetIds">
 > & {
@@ -73,6 +77,9 @@ export type DashboardStateInput = Partial<
 };
 
 export const DEFAULT_DASHBOARD_INTERACTION_LIMIT = 2;
+
+const DASHBOARD_NODE = "dashboard";
+const SEARCH_NODE = "search";
 
 const DASHBOARD_TOP_ACTIONS: readonly TopBarAction[] = [
   { label: "New project", icon: "N", tone: "primary" },
@@ -228,6 +235,18 @@ function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
 
+function assetNode(assetId: string): string {
+  return `asset:${assetId}`;
+}
+
+function projectNode(projectId: string): string {
+  return `project:${projectId}`;
+}
+
+function workspaceNode(workspaceId: string): string {
+  return `workspace:${workspaceId}`;
+}
+
 function formatKind(kind: DashboardAssetKind): string {
   switch (kind) {
     case "master":
@@ -252,19 +271,90 @@ function formatStatus(status: DashboardStatus): string {
   }
 }
 
-function flattenDashboardAssets(state: DashboardState): readonly DashboardAssetResult[] {
+export function createDashboardNavGraph(state: DashboardState): DashboardNavGraph {
   const queryActive = normalize(state.search.query).length > 0;
+  const edges: Record<string, string[]> = {
+    [DASHBOARD_NODE]: queryActive ? [SEARCH_NODE] : [SEARCH_NODE],
+    [SEARCH_NODE]: [],
+  };
+
+  if (!queryActive) {
+    edges[DASHBOARD_NODE].push(...state.recentAssetIds.map(assetNode));
+  }
+
+  for (const workspace of state.workspaces) {
+    const workspaceKey = workspaceNode(workspace.id);
+    edges[DASHBOARD_NODE].push(workspaceKey);
+    edges[workspaceKey] = [];
+
+    for (const project of workspace.projects) {
+      const projectKey = projectNode(project.id);
+      edges[workspaceKey].push(projectKey);
+      edges[projectKey] = [];
+
+      for (const asset of project.assets) {
+        const assetKey = assetNode(asset.id);
+        edges[projectKey].push(assetKey);
+        edges[SEARCH_NODE].push(assetKey);
+        edges[assetKey] = [];
+      }
+    }
+  }
+
+  return { edges };
+}
+
+export function shortestDashboardPathLength(
+  graph: DashboardNavGraph,
+  from: string,
+  to: string,
+): number | undefined {
+  const queue: Array<{ readonly node: string; readonly depth: number }> = [
+    { node: from, depth: 0 },
+  ];
+  const seen = new Set<string>([from]);
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (!current) {
+      return undefined;
+    }
+
+    if (current.node === to) {
+      return current.depth;
+    }
+
+    for (const next of graph.edges[current.node] ?? []) {
+      if (!seen.has(next)) {
+        seen.add(next);
+        queue.push({ node: next, depth: current.depth + 1 });
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function assetReachInteractions(state: DashboardState, asset: DashboardAsset): number {
+  return shortestDashboardPathLength(
+    createDashboardNavGraph(state),
+    DASHBOARD_NODE,
+    assetNode(asset.id),
+  ) ?? Number.POSITIVE_INFINITY;
+}
+
+function flattenDashboardAssets(state: DashboardState): readonly DashboardAssetResult[] {
   const results: DashboardAssetResult[] = [];
 
   for (const workspace of state.workspaces) {
     for (const project of workspace.projects) {
       for (const asset of project.assets) {
-        const recent = state.recentAssetIds.includes(asset.id);
         results.push({
           workspace,
           project,
           asset,
-          reachInteractions: queryActive || !recent ? DEFAULT_DASHBOARD_INTERACTION_LIMIT : 1,
+          reachInteractions: assetReachInteractions(state, asset),
         });
       }
     }
