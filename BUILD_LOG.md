@@ -42,7 +42,7 @@ leaves may start once the tag exists): `freeze/mcp-tools`, `freeze/motion-engine
 - [x] P3-T2 · codex · P3-T2-codex · built-against freeze/mcp-tools @ c10dbcb + freeze/motion-engine @ 4f6a95e + freeze/lock-manifest @ 769ab2e + freeze/variation-api @ 273db70 · tests pass · 2026-06-22
 - [ ] P3-T3 · contextual AI panel
 - [x] P3-T4 · codex · P3-T4-codex · built-against freeze/variation-api @ 273db70 · tests pass · 2026-06-22
-- [ ] P3-T5 · workspace dashboard
+- [x] P3-T5 · codex · P3-T5-codex · built-against freeze/mcp-tools @ c10dbcb + freeze/motion-engine @ 4f6a95e + freeze/lock-manifest @ 769ab2e + freeze/variation-api @ 273db70 · tests pass · 2026-06-22
 - [ ] P3-T6 · auth/account/users/tenant settings
 - [ ] **PHASE 3 GATE**
 
