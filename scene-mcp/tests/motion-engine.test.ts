@@ -35,9 +35,9 @@ function collectSourceFiles(dir: string, acc: string[] = []): string[] {
 }
 
 describe("motion-engine.test.ts", () => {
-  afterEach(() => {
+  afterEach(async () => {
     clearJobRegistry();
-    clearAuditLogForTests();
+    await clearAuditLogForTests();
     resetTier2CandidateMetricForTests();
     setMotionEngineForTests(undefined);
   });
@@ -148,7 +148,7 @@ describe("motion-engine.test.ts", () => {
         ),
       ).rejects.toThrow(/locked/i);
 
-      const rejections = readAuditLog().filter(
+      const rejections = (await readAuditLog()).filter(
         (entry) => entry.lockDecision?.outcome === "rejected",
       );
       expect(rejections.length).toBeGreaterThanOrEqual(1);

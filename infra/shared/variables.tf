@@ -20,3 +20,14 @@ variable "rate_limit_rpm" {
   default     = 120
   description = "Cloud Armor per-IP requests per minute threshold"
 }
+
+variable "audit_kms_key_id" {
+  type        = string
+  description = "CMEK resource ID for the immutable audit sink bucket"
+}
+
+variable "tenant_residency_map" {
+  type        = map(string)
+  default     = {}
+  description = "Optional per-tenant region overrides; defaults to var.region"
+}

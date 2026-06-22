@@ -77,9 +77,9 @@ async function setupLockedGraphic() {
 }
 
 describe("locks.test.ts guarantees", () => {
-  afterEach(() => {
+  afterEach(async () => {
     clearJobRegistry();
-    clearAuditLogForTests();
+    await clearAuditLogForTests();
   });
 
   it("rejects_locked_logo_move", async () => {
@@ -150,7 +150,7 @@ describe("locks.test.ts guarantees", () => {
 
   it("every_rejection_writes_audit", async () => {
     const { scene, logo, positionKeys } = await setupLockedGraphic();
-    clearAuditLogForTests();
+    await clearAuditLogForTests();
 
     await expect(
       setProperties(ctx, {
@@ -160,7 +160,7 @@ describe("locks.test.ts guarantees", () => {
       }),
     ).rejects.toThrow();
 
-    const rejections = readAuditLog().filter(
+    const rejections = (await readAuditLog()).filter(
       (entry) => entry.lockDecision?.outcome === "rejected",
     );
     expect(rejections.length).toBeGreaterThanOrEqual(1);

@@ -1,22 +1,36 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   clearAuditLogForTests,
   readAuditLog,
   redactArgs,
   writeAudit,
 } from "../src/audit/audit-writer.js";
+import {
+  configureAuditSink,
+  resetAuditSinkForTests,
+} from "../src/audit/sink.js";
 
 describe("audit writer", () => {
+  let tempDir: string;
+
   beforeEach(() => {
-    clearAuditLogForTests();
+    tempDir = mkdtempSync(join(tmpdir(), "dept-canvas-audit-writer-"));
+    process.env.AUDIT_SINK_PATH = join(tempDir, "audit.ndjson");
+    resetAuditSinkForTests();
+    configureAuditSink();
   });
 
-  it("append-only — no update or delete API", () => {
-    expect("updateAudit" in { writeAudit, readAuditLog }).toBe(false);
-    expect("deleteAudit" in { writeAudit, readAuditLog }).toBe(false);
+  afterEach(async () => {
+    await clearAuditLogForTests();
+    delete process.env.AUDIT_SINK_PATH;
+    resetAuditSinkForTests();
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("redacts PII and secrets from args", async () => {
+  it("redacts non-allowlisted args including email", async () => {
     await writeAudit({
       tenantId: "tenant-a",
       userId: "user-1",
@@ -29,8 +43,9 @@ describe("audit writer", () => {
       outcome: "ok",
     });
 
-    const [record] = readAuditLog();
+    const [record] = await readAuditLog();
     expect(record.argsRedacted.authorization).toBe("[REDACTED]");
+    expect(record.argsRedacted.email).toBe("[REDACTED]");
     expect(record.argsRedacted.width).toBe(1080);
   });
 
@@ -53,11 +68,13 @@ describe("audit writer", () => {
       outcome: "ok",
     });
 
-    expect(readAuditLog().every((r) => r.tenantId === "tenant-a")).toBe(true);
+    const records = await readAuditLog();
+    expect(records.every((r) => r.tenantId === "tenant-a")).toBe(true);
   });
 
-  it("redactArgs helper masks dev tokens", () => {
-    const redacted = redactArgs({ token: "dev:abc123" });
+  it("redactArgs helper masks dev tokens and free text", () => {
+    const redacted = redactArgs({ token: "dev:abc123", prompt: "creative brief" });
     expect(redacted.token).toBe("[REDACTED]");
+    expect(redacted.prompt).toBe("[REDACTED]");
   });
 });

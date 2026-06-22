@@ -35,9 +35,9 @@ function mockClient(overrides: Partial<OpenAiClient>): OpenAiClient {
 }
 
 describe("generate_asset", () => {
-  afterEach(() => {
+  afterEach(async () => {
     clearJobRegistry();
-    clearAuditLogForTests();
+    await clearAuditLogForTests();
     setOpenAiClientForTests(undefined);
     delete process.env.OPENAI_API_KEY;
   });

@@ -19,9 +19,9 @@ const creatorCtx: CallerContext = {
 };
 
 describe("core MCP tools", () => {
-  afterEach(() => {
+  afterEach(async () => {
     clearJobRegistry();
-    clearAuditLogForTests();
+    await clearAuditLogForTests();
   });
 
   it("registers core tools without forbidden destructive/keyframe tools", () => {
