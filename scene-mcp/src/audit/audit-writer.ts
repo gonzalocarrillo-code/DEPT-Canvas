@@ -2,20 +2,12 @@ import { randomUUID } from "node:crypto";
 import type { AuditRecord } from "./audit-record.js";
 import { getAuditSink } from "./sink.js";
 
-/** Keys known to be non-PII structural identifiers or numeric parameters. */
-const SAFE_ARG_KEYS = new Set([
+/** Numeric structural parameters safe to persist verbatim. */
+const NUMERIC_STRUCTURAL_KEYS = new Set([
   "width",
   "height",
   "duration",
   "fps",
-  "blockid",
-  "jobid",
-  "sceneid",
-  "templateid",
-  "version",
-  "stepsec",
-  "offsetsec",
-  "intent",
   "x",
   "y",
   "opacity",
@@ -23,39 +15,76 @@ const SAFE_ARG_KEYS = new Set([
   "rotation",
   "count",
   "index",
+  "stepsec",
+  "offsetsec",
+]);
+
+/** Identifier keys — string values kept only when they match structural id shape. */
+const ID_STRUCTURAL_KEYS = new Set([
+  "blockid",
+  "jobid",
+  "sceneid",
+  "templateid",
+]);
+
+/** Allow-listed key names whose string values are never free-text safe. */
+const REDACT_STRING_VALUE_KEYS = new Set([
+  "intent",
+  "tool",
+  "outcome",
   "key",
   "property",
-  "outcome",
-  "tool",
+  "version",
 ]);
 
 function normalizeKey(key: string): string {
   return key.toLowerCase().replace(/[_-]/g, "");
 }
 
-function isSafeKey(key: string): boolean {
-  return SAFE_ARG_KEYS.has(normalizeKey(key));
+function isStructuralId(value: string): boolean {
+  return /^[a-zA-Z0-9._:-]{1,128}$/.test(value) && !/\s/.test(value);
 }
 
 function redactValue(key: string, value: unknown): unknown {
+  const normalizedKey = normalizeKey(key);
+
   if (Array.isArray(value)) {
     return value.map((item, index) => redactValue(String(index), item));
   }
   if (value && typeof value === "object") {
     return redactArgs(value as Record<string, unknown>);
   }
-  if (typeof value === "number" || typeof value === "boolean" || value === null) {
-    return value;
+
+  if (typeof value === "number") {
+    return NUMERIC_STRUCTURAL_KEYS.has(normalizedKey) ? value : "[REDACTED]";
   }
+
+  if (typeof value === "boolean" || value === null) {
+    return "[REDACTED]";
+  }
+
   if (typeof value === "string") {
     if (value.startsWith("dev:") || value.startsWith("Bearer ")) {
       return "[REDACTED]";
     }
-    if (!isSafeKey(key)) {
+    if (REDACT_STRING_VALUE_KEYS.has(normalizedKey)) {
       return "[REDACTED]";
     }
-    return value;
+    if (
+      ID_STRUCTURAL_KEYS.has(normalizedKey) &&
+      isStructuralId(value)
+    ) {
+      return value;
+    }
+    if (NUMERIC_STRUCTURAL_KEYS.has(normalizedKey)) {
+      const parsed = Number(value);
+      if (!Number.isNaN(parsed)) {
+        return parsed;
+      }
+    }
+    return "[REDACTED]";
   }
+
   return "[REDACTED]";
 }
 

@@ -71,6 +71,24 @@ describe("audit-sink.test.ts", () => {
     expect(fileBody.trim().length).toBeGreaterThan(0);
   });
 
+  it("redacts_free_text_values_under_allowlisted_key_names", async () => {
+    const secretIntent = "secret creative brief phrase must not persist";
+    await writeAudit({
+      tenantId: "tenant-a",
+      userId: "user-1",
+      tool: "apply_intent",
+      args: { intent: secretIntent, blockId: "block-1" },
+      outcome: "ok",
+    });
+
+    const [record] = await readAuditLog();
+    expect(record.argsRedacted.intent).toBe("[REDACTED]");
+    expect(record.argsRedacted.blockId).toBe("block-1");
+
+    const fileBody = readFileSync(sinkPath, "utf8");
+    expect(fileBody.includes(secretIntent)).toBe(false);
+  });
+
   it("redacts_unknown_keys_via_allow_list", async () => {
     await writeAudit({
       tenantId: "tenant-a",
@@ -141,16 +159,20 @@ describe("audit-sink.test.ts", () => {
     );
   });
 
-  it("redactArgs_allow_list_keeps_safe_identifiers", () => {
+  it("redactArgs_allow_list_keeps_structural_ids_and_dimensions", () => {
     const redacted = redactArgs({
       free_text: "do not store",
       message: "hello",
       jobId: "job-1",
       width: 1920,
+      intent: "energetic launch copy",
+      enabled: true,
     });
     expect(redacted.free_text).toBe("[REDACTED]");
     expect(redacted.message).toBe("[REDACTED]");
     expect(redacted.jobId).toBe("job-1");
     expect(redacted.width).toBe(1920);
+    expect(redacted.intent).toBe("[REDACTED]");
+    expect(redacted.enabled).toBe("[REDACTED]");
   });
 });

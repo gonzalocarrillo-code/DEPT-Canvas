@@ -40,6 +40,9 @@ class FileAuditSink implements AuditSink {
   }
 
   async clearForTests(): Promise<void> {
+    if (process.env.NODE_ENV !== "test" && process.env.ALLOW_AUDIT_SINK_TRUNCATION !== "true") {
+      throw new Error("clearForTests is only permitted in test environments");
+    }
     writeFileSync(this.filePath, "", "utf8");
   }
 }
