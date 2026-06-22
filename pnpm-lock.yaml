@@ -57,6 +57,9 @@ importers:
       '@cesdk/node':
         specifier: 1.76.1
         version: 1.76.1
+      '@dept-canvas/renderer':
+        specifier: workspace:*
+        version: link:../renderer
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)

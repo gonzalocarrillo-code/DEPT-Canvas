@@ -167,6 +167,27 @@ export const QueryAnimatableInput = z.object({
   blockId: z.number().int(),
 });
 
+export const RenderVariantOutput = z.object({
+  renderJobId: z.string(),
+  estimated: z.object({
+    count: z.number(),
+    costUsd: z.number(),
+    etaSec: z.number(),
+  }),
+});
+
+export const RenderVariantInput = z.object({
+  sceneRef: z.string(),
+  outputs: z.array(
+    z.object({
+      width: z.number().int().positive(),
+      height: z.number().int().positive(),
+      durationSec: z.number().positive().optional(),
+      format: z.enum(["png", "jpeg", "pdf", "mp4"]),
+    }),
+  ),
+});
+
 export const QueryAnimatableOutput = z.object({
   properties: z.array(
     z.object({

@@ -3,11 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./cesdk-render": "./src/cesdk-render.ts",
+    "./worker": "./src/worker.ts"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "echo 'lint: renderer (no-op)'",
-    "test": "vitest run --config ../vitest.config.ts --dir tests --passWithNoTests"
+    "test": "vitest run --config ../vitest.config.ts tests/**/*.test.ts"
   },
   "dependencies": {
     "@cesdk/node": "1.76.1"

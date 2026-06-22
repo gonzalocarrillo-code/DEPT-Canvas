@@ -13,6 +13,7 @@ import { stagger } from "./stagger.js";
 import { setTiming } from "./set-timing.js";
 import { sequence } from "./sequence.js";
 import { queryAnimatableTool } from "./query-animatable.js";
+import { renderVariant } from "./render-variant.js";
 import {
   ApplyBrandKitInput,
   ApplyIntentInput,
@@ -21,6 +22,7 @@ import {
   CreateSceneInput,
   GenerateAssetInput,
   QueryAnimatableInput,
+  RenderVariantInput,
   SaveSceneInput,
   SequenceInput,
   SetPropertiesInput,
@@ -76,6 +78,7 @@ export function buildCoreTools(): ToolRegistration[] {
     wrapTool("set_timing", SetTimingInput, setTiming),
     wrapTool("sequence", SequenceInput, sequence),
     wrapTool("query_animatable", QueryAnimatableInput, queryAnimatableTool),
+    wrapTool("render_variant", RenderVariantInput, renderVariant),
   ];
 }
 
@@ -95,4 +98,5 @@ export const CORE_TOOL_NAMES = [
   "apply_lock_manifest",
   "save_scene",
   "generate_asset",
+  "render_variant",
 ] as const;

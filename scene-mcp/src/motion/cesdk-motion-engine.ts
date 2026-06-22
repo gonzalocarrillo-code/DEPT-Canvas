@@ -233,7 +233,15 @@ export class CesdkMotionEngine implements MotionEngine {
   }
 
   async render(sceneRef: string, format: "mp4" | "png" | "pdf"): Promise<string> {
-    return `tenant-render/${sceneRef}.${format}`;
+    const { renderOutput } = await import("@dept-canvas/renderer/cesdk-render");
+    const tenantMatch = sceneRef.match(/^tenant\/([^/]+)\//);
+    const tenantId = tenantMatch?.[1] ?? "unknown";
+    const result = await renderOutput(tenantId, sceneRef, {
+      width: 1080,
+      height: 1080,
+      format,
+    });
+    return result.outputRef;
   }
 }
 
