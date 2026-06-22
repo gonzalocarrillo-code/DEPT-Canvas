@@ -1,5 +1,11 @@
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import {
+  appendFileSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import type { AuditRecord } from "./audit-record.js";
 
 export interface AuditSink {
@@ -7,6 +13,8 @@ export interface AuditSink {
   readAll(): Promise<readonly AuditRecord[]>;
   clearForTests(): Promise<void>;
 }
+
+const DEFAULT_AUDIT_SINK_PATH = "/var/lib/dept-canvas/audit/audit.ndjson";
 
 class FileAuditSink implements AuditSink {
   constructor(private readonly filePath: string) {}
@@ -36,23 +44,49 @@ class FileAuditSink implements AuditSink {
   }
 }
 
-class InMemoryAuditSink implements AuditSink {
-  private records: AuditRecord[] = [];
+/**
+ * Writes NDJSON to disk and emits structured logs for the Cloud Logging → GCS
+ * pipeline configured in infra/shared/observability.tf (audit_event=true).
+ */
+class DurableAuditSink implements AuditSink {
+  constructor(
+    private readonly fileSink: FileAuditSink,
+    private readonly logFn: (line: string) => void = (line) => {
+      process.stdout.write(`${line}\n`);
+    },
+  ) {}
 
   async append(record: AuditRecord): Promise<void> {
-    this.records.push(Object.freeze({ ...record }));
+    await this.fileSink.append(record);
+    this.logFn(
+      JSON.stringify({
+        severity: "INFO",
+        audit_event: true,
+        ...record,
+      }),
+    );
   }
 
   async readAll(): Promise<readonly AuditRecord[]> {
-    return [...this.records];
+    return this.fileSink.readAll();
   }
 
   async clearForTests(): Promise<void> {
-    this.records.length = 0;
+    await this.fileSink.clearForTests();
   }
 }
 
 let activeSink: AuditSink | undefined;
+
+function resolveSinkPath(): string {
+  if (process.env.AUDIT_SINK_PATH) {
+    return process.env.AUDIT_SINK_PATH;
+  }
+  if (process.env.NODE_ENV === "test") {
+    return join(tmpdir(), "dept-canvas-test-audit.ndjson");
+  }
+  return DEFAULT_AUDIT_SINK_PATH;
+}
 
 export function configureAuditSink(sink?: AuditSink): AuditSink {
   if (sink) {
@@ -60,13 +94,7 @@ export function configureAuditSink(sink?: AuditSink): AuditSink {
     return sink;
   }
 
-  const path = process.env.AUDIT_SINK_PATH;
-  if (path) {
-    activeSink = new FileAuditSink(path);
-    return activeSink;
-  }
-
-  activeSink = new InMemoryAuditSink();
+  activeSink = new DurableAuditSink(new FileAuditSink(resolveSinkPath()));
   return activeSink;
 }
 
@@ -79,4 +107,8 @@ export function getAuditSink(): AuditSink {
 
 export function resetAuditSinkForTests(): void {
   activeSink = undefined;
+}
+
+export function defaultAuditSinkPath(): string {
+  return resolveSinkPath();
 }

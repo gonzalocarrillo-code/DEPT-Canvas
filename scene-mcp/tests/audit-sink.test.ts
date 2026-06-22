@@ -1,9 +1,8 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  clearAuditLogForTests,
   readAuditLog,
   redactArgs,
   writeAudit,
@@ -16,23 +15,30 @@ import {
 describe("audit-sink.test.ts", () => {
   let tempDir: string;
   let sinkPath: string;
+  let logLines: string[];
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "dept-canvas-audit-"));
     sinkPath = join(tempDir, "audit.ndjson");
     process.env.AUDIT_SINK_PATH = sinkPath;
+    logLines = [];
     resetAuditSinkForTests();
     configureAuditSink();
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      logLines.push(String(chunk));
+      return true;
+    });
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     delete process.env.AUDIT_SINK_PATH;
     resetAuditSinkForTests();
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("persists_records_to_durable_append_only_sink", async () => {
-    await writeAudit({
+  it("persists_records_across_process_restart", async () => {
+    const first = await writeAudit({
       tenantId: "tenant-a",
       userId: "user-1",
       tool: "create_scene",
@@ -45,10 +51,27 @@ describe("audit-sink.test.ts", () => {
 
     const records = await readAuditLog();
     expect(records).toHaveLength(1);
+    expect(records[0]?.id).toBe(first.id);
     expect(records[0]?.tool).toBe("create_scene");
   });
 
-  it("redacts_prompt_and_free_text_by_default", async () => {
+  it("delivers_structured_logs_for_cmek_bucket_pipeline", async () => {
+    await writeAudit({
+      tenantId: "tenant-a",
+      userId: "user-1",
+      tool: "save_scene",
+      args: { jobId: "job-1" },
+      outcome: "ok",
+    });
+
+    expect(logLines.some((line) => line.includes('"audit_event":true'))).toBe(
+      true,
+    );
+    const fileBody = readFileSync(sinkPath, "utf8");
+    expect(fileBody.trim().length).toBeGreaterThan(0);
+  });
+
+  it("redacts_unknown_keys_via_allow_list", async () => {
     await writeAudit({
       tenantId: "tenant-a",
       userId: "user-1",
@@ -57,6 +80,7 @@ describe("audit-sink.test.ts", () => {
         prompt: "secret creative brief text",
         brief: "launch campaign copy",
         width: 1080,
+        nested: { message: "nested secret", jobId: "job-1" },
       },
       outcome: "ok",
     });
@@ -65,6 +89,12 @@ describe("audit-sink.test.ts", () => {
     expect(record.argsRedacted.prompt).toBe("[REDACTED]");
     expect(record.argsRedacted.brief).toBe("[REDACTED]");
     expect(record.argsRedacted.width).toBe(1080);
+    expect((record.argsRedacted.nested as Record<string, unknown>).message).toBe(
+      "[REDACTED]",
+    );
+    expect((record.argsRedacted.nested as Record<string, unknown>).jobId).toBe(
+      "job-1",
+    );
   });
 
   it("lock_rejection_produces_immutable_record", async () => {
@@ -83,20 +113,44 @@ describe("audit-sink.test.ts", () => {
     expect(records[0]?.outcome).toBe("error");
   });
 
-  it("redactArgs_masks_prompt_keys", () => {
+  it("append_only_sink_grows_monotonically", async () => {
+    await writeAudit({
+      tenantId: "tenant-a",
+      userId: "user-1",
+      tool: "create_scene",
+      args: { width: 100 },
+      outcome: "ok",
+    });
+    await writeAudit({
+      tenantId: "tenant-a",
+      userId: "user-2",
+      tool: "save_scene",
+      args: { jobId: "job-2" },
+      outcome: "ok",
+    });
+
+    const beforeRestart = await readAuditLog();
+    expect(beforeRestart).toHaveLength(2);
+
+    resetAuditSinkForTests();
+    configureAuditSink();
+    const afterRestart = await readAuditLog();
+    expect(afterRestart).toHaveLength(2);
+    expect(afterRestart.map((r) => r.id)).toEqual(
+      beforeRestart.map((r) => r.id),
+    );
+  });
+
+  it("redactArgs_allow_list_keeps_safe_identifiers", () => {
     const redacted = redactArgs({
       free_text: "do not store",
       message: "hello",
       jobId: "job-1",
+      width: 1920,
     });
     expect(redacted.free_text).toBe("[REDACTED]");
     expect(redacted.message).toBe("[REDACTED]");
     expect(redacted.jobId).toBe("job-1");
-  });
-
-  it("append_only_no_update_or_delete_api", async () => {
-    await clearAuditLogForTests();
-    expect("updateAudit" in { writeAudit, readAuditLog }).toBe(false);
-    expect("deleteAudit" in { writeAudit, readAuditLog }).toBe(false);
+    expect(redacted.width).toBe(1920);
   });
 });

@@ -2,60 +2,61 @@ import { randomUUID } from "node:crypto";
 import type { AuditRecord } from "./audit-record.js";
 import { getAuditSink } from "./sink.js";
 
-const SECRET_KEYS = new Set([
-  "authorization",
-  "token",
-  "password",
-  "secret",
-  "apikey",
-  "openai_api_key",
-  "cesdk_license",
-]);
-
-/** User-supplied free text that must never land verbatim in the immutable sink. */
-const FREE_TEXT_KEYS = new Set([
-  "prompt",
-  "brief",
-  "message",
-  "content",
-  "text",
-  "description",
-  "user_input",
-  "freetext",
-  "free_text",
-  "instructions",
-  "body",
+/** Keys known to be non-PII structural identifiers or numeric parameters. */
+const SAFE_ARG_KEYS = new Set([
+  "width",
+  "height",
+  "duration",
+  "fps",
+  "blockid",
+  "jobid",
+  "sceneid",
+  "templateid",
+  "version",
+  "stepsec",
+  "offsetsec",
+  "intent",
+  "x",
+  "y",
+  "opacity",
+  "scale",
+  "rotation",
+  "count",
+  "index",
+  "key",
+  "property",
+  "outcome",
+  "tool",
 ]);
 
 function normalizeKey(key: string): string {
   return key.toLowerCase().replace(/[_-]/g, "");
 }
 
-function shouldRedactKey(key: string): boolean {
-  const normalized = normalizeKey(key);
-  if (SECRET_KEYS.has(normalized)) {
-    return true;
-  }
-  if (FREE_TEXT_KEYS.has(normalized)) {
-    return true;
-  }
-  return normalized.includes("prompt") || normalized.includes("freetext");
+function isSafeKey(key: string): boolean {
+  return SAFE_ARG_KEYS.has(normalizeKey(key));
 }
 
 function redactValue(key: string, value: unknown): unknown {
-  if (shouldRedactKey(key)) {
-    return "[REDACTED]";
-  }
-  if (typeof value === "string" && value.startsWith("dev:")) {
-    return "[REDACTED]";
-  }
   if (Array.isArray(value)) {
     return value.map((item, index) => redactValue(String(index), item));
   }
   if (value && typeof value === "object") {
     return redactArgs(value as Record<string, unknown>);
   }
-  return value;
+  if (typeof value === "number" || typeof value === "boolean" || value === null) {
+    return value;
+  }
+  if (typeof value === "string") {
+    if (value.startsWith("dev:") || value.startsWith("Bearer ")) {
+      return "[REDACTED]";
+    }
+    if (!isSafeKey(key)) {
+      return "[REDACTED]";
+    }
+    return value;
+  }
+  return "[REDACTED]";
 }
 
 export function redactArgs(args: Record<string, unknown>): Record<string, unknown> {
