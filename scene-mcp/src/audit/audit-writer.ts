@@ -1,18 +1,49 @@
 import { randomUUID } from "node:crypto";
 import type { AuditRecord } from "./audit-record.js";
+import { getAuditSink } from "./sink.js";
 
-const REDACT_KEYS = new Set([
+const SECRET_KEYS = new Set([
   "authorization",
   "token",
   "password",
   "secret",
-  "apiKey",
+  "apikey",
   "openai_api_key",
-  "CESDK_LICENSE",
+  "cesdk_license",
 ]);
 
+/** User-supplied free text that must never land verbatim in the immutable sink. */
+const FREE_TEXT_KEYS = new Set([
+  "prompt",
+  "brief",
+  "message",
+  "content",
+  "text",
+  "description",
+  "user_input",
+  "freetext",
+  "free_text",
+  "instructions",
+  "body",
+]);
+
+function normalizeKey(key: string): string {
+  return key.toLowerCase().replace(/[_-]/g, "");
+}
+
+function shouldRedactKey(key: string): boolean {
+  const normalized = normalizeKey(key);
+  if (SECRET_KEYS.has(normalized)) {
+    return true;
+  }
+  if (FREE_TEXT_KEYS.has(normalized)) {
+    return true;
+  }
+  return normalized.includes("prompt") || normalized.includes("freetext");
+}
+
 function redactValue(key: string, value: unknown): unknown {
-  if (REDACT_KEYS.has(key.toLowerCase())) {
+  if (shouldRedactKey(key)) {
     return "[REDACTED]";
   }
   if (typeof value === "string" && value.startsWith("dev:")) {
@@ -35,14 +66,12 @@ export function redactArgs(args: Record<string, unknown>): Record<string, unknow
   return out;
 }
 
-const auditLog: AuditRecord[] = [];
-
-export function readAuditLog(): readonly AuditRecord[] {
-  return auditLog;
+export async function readAuditLog(): Promise<readonly AuditRecord[]> {
+  return getAuditSink().readAll();
 }
 
-export function clearAuditLogForTests(): void {
-  auditLog.length = 0;
+export async function clearAuditLogForTests(): Promise<void> {
+  await getAuditSink().clearForTests();
 }
 
 export async function writeAudit(
@@ -67,6 +96,6 @@ export async function writeAudit(
     detail: rec.detail,
   };
 
-  auditLog.push(entry);
+  await getAuditSink().append(entry);
   return entry;
 }

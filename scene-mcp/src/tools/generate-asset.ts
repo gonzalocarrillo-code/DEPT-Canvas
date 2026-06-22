@@ -93,7 +93,7 @@ export async function generateAsset(
         asset: "pass",
         brandLegal: "pass",
       },
-      auditId: readAuditLog().at(-1)?.id ?? "pending",
+      auditId: (await readAuditLog()).at(-1)?.id ?? "pending",
     });
 
     assertNoOpenAiKeyLeaks(output);

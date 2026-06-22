@@ -7,8 +7,8 @@ import {
 } from "../src/audit/audit-writer.js";
 
 describe("audit writer", () => {
-  beforeEach(() => {
-    clearAuditLogForTests();
+  beforeEach(async () => {
+    await clearAuditLogForTests();
   });
 
   it("append-only — no update or delete API", () => {
@@ -29,7 +29,7 @@ describe("audit writer", () => {
       outcome: "ok",
     });
 
-    const [record] = readAuditLog();
+    const [record] = await readAuditLog();
     expect(record.argsRedacted.authorization).toBe("[REDACTED]");
     expect(record.argsRedacted.width).toBe(1080);
   });
@@ -53,11 +53,17 @@ describe("audit writer", () => {
       outcome: "ok",
     });
 
-    expect(readAuditLog().every((r) => r.tenantId === "tenant-a")).toBe(true);
+    const records = await readAuditLog();
+    expect(records.every((r) => r.tenantId === "tenant-a")).toBe(true);
   });
 
   it("redactArgs helper masks dev tokens", () => {
     const redacted = redactArgs({ token: "dev:abc123" });
     expect(redacted.token).toBe("[REDACTED]");
+  });
+
+  it("redactArgs helper masks prompt text", () => {
+    const redacted = redactArgs({ prompt: "creative brief" });
+    expect(redacted.prompt).toBe("[REDACTED]");
   });
 });
