@@ -14,3 +14,8 @@ interface ImportMeta {
     readonly VITE_CESDK_USER_ID?: string;
   };
 }
+
+declare module "*.css" {
+  const css: string;
+  export default css;
+}
