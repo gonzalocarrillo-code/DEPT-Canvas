@@ -7,6 +7,7 @@ import { useEditorStore } from "./editorStore";
 import { useGraphStore } from "@/graph/store";
 import { saveScene } from "@/api/ai";
 import { parsePsd } from "./psdImport";
+import { parseSvg } from "./svgImport";
 import { FORMATS, SHAPE_LIBRARY, type EditorMode, type FormatId, type LayerKind } from "./types";
 
 const baseItems: { kind: LayerKind; label: string; icon: typeof Type }[] = [
@@ -40,10 +41,10 @@ export function EditorToolbar() {
     if (!file) return;
     setImportMsg("Importing…");
     try {
-      const buf = await file.arrayBuffer();
-      const scene = parsePsd(buf);
+      const isSvg = /\.svg$/i.test(file.name) || file.type.includes("svg");
+      const scene = isSvg ? parseSvg(await file.text()) : parsePsd(await file.arrayBuffer());
       if (!scene.layers.length) {
-        setImportMsg("No layers found");
+        setImportMsg(scene.warnings[0] ?? "No layers found");
       } else {
         importScene(scene);
         setImportMsg(
@@ -51,7 +52,7 @@ export function EditorToolbar() {
         );
       }
     } catch {
-      setImportMsg("Couldn't read that PSD");
+      setImportMsg("Couldn't read that file");
     }
     window.setTimeout(() => setImportMsg(null), 4000);
   };
@@ -151,7 +152,7 @@ export function EditorToolbar() {
                   }}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-accent"
                 >
-                  <FileUp className="size-3.5 text-muted-foreground" /> Import PSD…
+                  <FileUp className="size-3.5 text-muted-foreground" /> Import PSD / SVG…
                 </button>
               </div>
             </>
@@ -159,7 +160,7 @@ export function EditorToolbar() {
           <input
             ref={fileRef}
             type="file"
-            accept=".psd,image/vnd.adobe.photoshop"
+            accept=".psd,.svg,image/svg+xml,image/vnd.adobe.photoshop"
             onChange={onImportFile}
             className="hidden"
           />
