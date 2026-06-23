@@ -34,10 +34,17 @@ function isProduction(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
-function resolveAuthMode(): "oidc" {
+function resolveAuthMode(): "oidc" | "dev" {
   const mode = process.env.EDGE_AUTH_MODE;
-  if (isProduction() && mode !== "oidc") {
-    throw new TokenValidationError("Authentication misconfigured for production");
+  if (isProduction()) {
+    // Production is fail-closed: only signed OIDC sessions are accepted.
+    if (mode !== "oidc") {
+      throw new TokenValidationError("Authentication misconfigured for production");
+    }
+    return "oidc";
+  }
+  if (mode === "dev") {
+    return "dev";
   }
   if (mode !== "oidc") {
     throw new TokenValidationError("Authentication misconfigured");
@@ -45,11 +52,44 @@ function resolveAuthMode(): "oidc" {
   return "oidc";
 }
 
+const ROLES: readonly EdgeRole[] = [
+  "viewer",
+  "creator",
+  "brand_owner",
+  "approver",
+  "tenant_admin",
+];
+
+// Local-only: accept the same `dev:<base64url(json)>` token scheme scene-mcp uses,
+// so a single VITE_DEV_TOKEN works across the stack. Never enabled in production.
+function parseDevToken(raw: string): SessionToken {
+  if (!raw.startsWith("dev:")) {
+    throw new TokenValidationError("dev auth mode expects a dev: token");
+  }
+  let claims: { sub?: string; tenant_id?: string; role?: string };
+  try {
+    claims = JSON.parse(Buffer.from(raw.slice(4), "base64url").toString("utf8"));
+  } catch {
+    throw new TokenValidationError("Malformed dev token");
+  }
+  if (!claims.tenant_id) {
+    throw new TokenValidationError("dev token missing tenant_id");
+  }
+  const role = (ROLES as string[]).includes(claims.role ?? "")
+    ? (claims.role as EdgeRole)
+    : "creator";
+  return { userId: claims.sub ?? "dev-user", tenantId: claims.tenant_id, role };
+}
+
 export async function validateSessionToken(
   authorization: string | undefined,
 ): Promise<SessionToken> {
-  resolveAuthMode();
+  const mode = resolveAuthMode();
   const raw = parseBearer(authorization);
+
+  if (mode === "dev") {
+    return parseDevToken(raw);
+  }
 
   if (raw.startsWith("dev:") || raw.startsWith("svc:")) {
     throw new TokenValidationError("Unsigned dev/service tokens are rejected");

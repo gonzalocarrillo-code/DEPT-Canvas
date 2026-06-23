@@ -5,6 +5,7 @@ import express, {
   type NextFunction,
 } from "express";
 import { createScimRouter } from "./scim/provisioning.js";
+import { registerAppRoutes } from "./app-proxy.js";
 import { assertMcpEgressAllowed } from "./egress-policy.js";
 import {
   EgressDeniedError,
@@ -40,6 +41,24 @@ function safeErrorResponse(res: Response, status: number, code: string): void {
 export function createEdgeApp(options: EdgeServerOptions = {}): Express {
   const app = express();
   app.use(express.json({ limit: "2mb" }));
+
+  // CORS for the browser frontend (dev origin by default). Preflight is answered
+  // before auth so OPTIONS without an Authorization header succeeds.
+  const allowedOrigin = process.env.EDGE_ALLOWED_ORIGIN ?? "http://127.0.0.1:5173";
+  app.use((req, res, next) => {
+    const origin = req.header("origin");
+    if (origin && origin === allowedOrigin) {
+      res.setHeader("access-control-allow-origin", origin);
+      res.setHeader("vary", "origin");
+      res.setHeader("access-control-allow-headers", "authorization,content-type,x-tenant-id");
+      res.setHeader("access-control-allow-methods", "GET,POST,DELETE,OPTIONS");
+    }
+    if (req.method === "OPTIONS") {
+      res.status(204).end();
+      return;
+    }
+    next();
+  });
 
   if (options.tlsTerminatedAtLoadBalancer !== false) {
     app.use((req, res, next) => {
@@ -84,6 +103,11 @@ export function createEdgeApp(options: EdgeServerOptions = {}): Express {
     }
   });
 
+  // App API: proxy product endpoints to the orchestration control plane.
+  registerAppRoutes(app);
+
+  // Fallback for any other /api/* path: resolve the tenant silo route (the
+  // internal data-plane URL) without leaking cross-tenant access.
   app.use("/api", (req, res, next) => {
     const edgeReq = req as EdgeRequest;
     try {
