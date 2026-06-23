@@ -30,6 +30,7 @@ import { useGraphStore } from "../store";
 import { TransformMenu } from "../TransformMenu";
 import { VariationComposer } from "../VariationComposer";
 import { MASTER_SLOTS } from "@/batch/batchStore";
+import { useSkillsStore } from "@/skills/skills";
 import { cn } from "@/lib/utils";
 
 const kindIcon: Record<NodeKind, typeof FileText> = {
@@ -79,12 +80,16 @@ function GenericNode({ id, data, selected }: { id: string; data: CanvasNodeData;
   const pid = projectId ?? "demo";
   const [menuOpen, setMenuOpen] = useState(false);
   const [varyOpen, setVaryOpen] = useState(false);
+  const skills = useSkillsStore((s) => s.skills);
 
   const Icon = kindIcon[data.kind];
   const status = statusInfo[data.status];
   const StatusIcon = status.icon;
   const hue = data.hue ?? kindInfo[data.kind].hue;
   const locked = Boolean(data.locked);
+  const isGenerating = data.status === "generating";
+  // Every generation process carries a prompt + an optional MD skill.
+  const hasSkill = data.kind !== "brief";
   // The master + any finished visual asset can fan out variations.
   const canVary =
     !locked && data.status === "done" && (data.kind === "image" || data.kind === "video");
@@ -112,6 +117,14 @@ function GenericNode({ id, data, selected }: { id: string; data: CanvasNodeData;
     >
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
+
+      {isGenerating && (
+        <div className="absolute inset-0 z-20 grid place-items-center rounded-xl bg-background/65 backdrop-blur-[1px]">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+            <Loader2 className="size-4 animate-spin" /> Generating…
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2 px-3 pt-3">
         <span
@@ -148,6 +161,24 @@ function GenericNode({ id, data, selected }: { id: string; data: CanvasNodeData;
             value={data.prompt ?? ""}
             onChange={(e) => updateNodeData(id, { prompt: e.target.value })}
           />
+        )}
+        {hasSkill && (
+          <label className="mt-2 flex items-center gap-1.5">
+            <Sparkles className="size-3 shrink-0 text-primary" />
+            <select
+              value={data.skillId ?? ""}
+              onChange={(e) => updateNodeData(id, { skillId: e.target.value || null })}
+              title="MD skill — scopes the AI for this process"
+              className="nodrag min-w-0 flex-1 rounded border border-border bg-background px-1.5 py-1 text-[11px] text-foreground outline-none focus:border-primary/60"
+            >
+              <option value="">No skill</option>
+              {skills.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
       </div>
 

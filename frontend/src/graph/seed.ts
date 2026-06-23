@@ -59,7 +59,7 @@ export function seedGraph(_projectId: string): {
       data: {
         kind: "resize",
         title: "Resize — 9:16 · 1:1 · 16:9",
-        status: "generating",
+        status: "done",
         model: "engine",
         count: 3,
         hue: 35,

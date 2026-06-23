@@ -10,7 +10,7 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { useShallow } from "zustand/react/shallow";
-import { Plus, Download } from "lucide-react";
+import { Plus, Download, Play, Loader2 } from "lucide-react";
 import { useGraphStore } from "./store";
 import { useGraphShortcuts } from "./useGraphShortcuts";
 import { nodeTypes } from "./nodes";
@@ -62,6 +62,26 @@ function AddNodeMenu() {
         </>
       )}
     </div>
+  );
+}
+
+function GenerateAllButton() {
+  const generateAll = useGraphStore((s) => s.generateAll);
+  const generating = useGraphStore((s) => s.nodes.some((n) => n.data.status === "generating"));
+  return (
+    <button
+      onClick={generateAll}
+      disabled={generating}
+      title="Run every generation node — renders the whole graph in loading states"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent disabled:opacity-60"
+    >
+      {generating ? (
+        <Loader2 className="size-3.5 animate-spin text-primary" />
+      ) : (
+        <Play className="size-3.5 text-primary" />
+      )}
+      {generating ? "Generating…" : "Generate all"}
+    </button>
   );
 }
 
@@ -153,7 +173,10 @@ function Flow({ projectId }: { projectId: string }) {
         <AddNodeMenu />
       </Panel>
       <Panel position="top-right">
-        <ExportApprovedButton />
+        <div className="flex items-center gap-2">
+          <GenerateAllButton />
+          <ExportApprovedButton />
+        </div>
       </Panel>
       <Background
         variant={BackgroundVariant.Dots}

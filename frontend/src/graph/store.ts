@@ -78,6 +78,7 @@ interface GraphState {
   updateNodeData: (id: string, patch: Partial<CanvasNodeData>) => void;
   addChild: (parentId: string, kind: NodeKind) => void;
   addNode: (kind: NodeKind) => void;
+  generateAll: () => void;
   buildFromPlan: (projectId: string, plan: PlanInput) => void;
   pushHistory: () => void;
   undo: () => void;
@@ -391,6 +392,34 @@ export const useGraphStore = create<GraphState>()((set, get) => {
       },
     };
     set((s) => ({ nodes: [...s.nodes, node] }));
+  },
+  // Run every generation node — each flips to a "generating" loading state, then
+  // settles to done (staggered), so the whole graph renders its work in-place.
+  generateAll: () => {
+    const generatable = new Set<NodeKind>([
+      "image",
+      "copy",
+      "video",
+      "transcreate",
+      "resize",
+      "animate",
+      "picture-idea",
+      "variant",
+    ]);
+    const targets = get().nodes.filter((n) => generatable.has(n.data.kind) && !n.data.locked);
+    if (!targets.length) return;
+    const ids = new Set(targets.map((t) => t.id));
+    set((s) => ({
+      nodes: s.nodes.map((n) =>
+        ids.has(n.id) ? { ...n, data: { ...n.data, status: "generating" } } : n,
+      ),
+    }));
+    targets.forEach((n, idx) =>
+      window.setTimeout(
+        () => get().updateNodeData(n.id, { status: "done", hue: n.data.hue ?? kindInfo[n.data.kind].hue }),
+        600 + idx * 180,
+      ),
+    );
   },
   buildFromPlan: (projectId, plan) => {
     const sanitize = (k: string): NodeKind => (k in kindInfo ? (k as NodeKind) : "image");
