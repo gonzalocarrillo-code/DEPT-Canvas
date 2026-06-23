@@ -30,6 +30,7 @@ describe("app-proxy.test.ts — edge → orchestration", () => {
   afterEach(() => {
     resetRateLimitsForTests();
     delete process.env.ORCHESTRATION_URL;
+    delete process.env.RENDERER_URL;
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -150,6 +151,40 @@ describe("app-proxy.test.ts — edge → orchestration", () => {
     expect(post.status).toBe(200);
     expect(seen).toContain("http://orchestration.internal:8800/scenes/scene-1");
     expect(seen).toContain("http://orchestration.internal:8800/scenes/scene-1/save");
+    vi.unstubAllGlobals();
+  });
+
+  it("forwards export + job-status to the renderer with tenant from the token", async () => {
+    process.env.RENDERER_URL = "http://renderer.internal:8830";
+    const seen: { url: string; tenant?: string }[] = [];
+    const realFetch = globalThis.fetch.bind(globalThis);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: unknown, init?: RequestInit) => {
+        if (typeof url === "string" && url.includes("renderer.internal")) {
+          const headers = (init?.headers ?? {}) as Record<string, string>;
+          seen.push({ url, tenant: headers["x-tenant-id"] });
+          return new Response(JSON.stringify({ jobId: "r1", status: "queued" }), {
+            status: 202,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        return realFetch(url as string, init);
+      }),
+    );
+    const app = createEdgeApp();
+    const auth = await bearerFor({ sub: "u1", tenant_id: "tenant-a", role: "creator" });
+    const exp = await request(app)
+      .post("/api/variations/export")
+      .set("authorization", auth)
+      .send({ sceneRef: "tenant/tenant-a/scenes/s1.scene", outputs: [{ width: 1080, height: 1080, format: "png" }] });
+    const stat = await request(app).get("/api/jobs/r1/status").set("authorization", auth);
+    expect(exp.status).toBe(202);
+    expect(stat.status).toBe(202);
+    expect(seen).toEqual([
+      { url: "http://renderer.internal:8830/jobs", tenant: "tenant-a" },
+      { url: "http://renderer.internal:8830/jobs/r1", tenant: "tenant-a" },
+    ]);
     vi.unstubAllGlobals();
   });
 });

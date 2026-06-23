@@ -1,9 +1,18 @@
 import { randomUUID } from "node:crypto";
 import {
   type RenderJobPayload,
+  type RenderOutputSpec,
   type RenderResult,
   renderOutput,
 } from "./cesdk-render.js";
+
+// Render seam: defaults to the real CE.SDK render, overridable in tests so the
+// job lifecycle + HTTP surface can be verified without a CESDK license.
+type RenderFn = (tenantId: string, sceneRef: string, spec: RenderOutputSpec) => Promise<RenderResult>;
+let renderFn: RenderFn = renderOutput;
+export function setRenderFnForTests(fn: RenderFn | undefined): void {
+  renderFn = fn ?? renderOutput;
+}
 
 export interface QueuedRenderJob extends RenderJobPayload {
   id: string;
@@ -46,7 +55,7 @@ export async function processRenderJob(jobId: string): Promise<QueuedRenderJob> 
   job.status = "running";
   try {
     for (const output of job.outputs) {
-      const result = await renderOutput(job.tenantId, job.sceneRef, output);
+      const result = await renderFn(job.tenantId, job.sceneRef, output);
       job.results.push(result);
     }
     job.status = "completed";

@@ -32,6 +32,10 @@ function orchestrationUrl(): string {
   return process.env.ORCH_BASE_URL ?? process.env.ORCHESTRATION_URL ?? "";
 }
 
+function rendererUrl(): string {
+  return process.env.RENDERER_URL ?? "";
+}
+
 /** Authoritative tenant from the session; reject any conflicting client hint. */
 function resolveTenant(req: ProxyRequest): string {
   const session = req.session;
@@ -43,7 +47,12 @@ function resolveTenant(req: ProxyRequest): string {
   return session.tenantId;
 }
 
-async function forward(req: ProxyRequest, res: Response, upstreamPath: string): Promise<void> {
+async function forward(
+  req: ProxyRequest,
+  res: Response,
+  upstreamPath: string,
+  base: string = orchestrationUrl(),
+): Promise<void> {
   let tenantId: string;
   try {
     tenantId = resolveTenant(req);
@@ -56,7 +65,6 @@ async function forward(req: ProxyRequest, res: Response, upstreamPath: string): 
   }
   const session = req.session!;
 
-  const base = orchestrationUrl();
   if (!base) {
     // /status degrades gracefully so the frontend can fall back to simulation.
     if (upstreamPath === "/status") {
@@ -108,6 +116,24 @@ export function registerAppRoutes(app: Express): void {
   });
   app.post("/api/scenes/:id/save", (req, res) => {
     void forward(req as ProxyRequest, res, `/scenes/${encodeURIComponent(req.params.id)}/save`);
+  });
+
+  // Render/export goes to the renderer data plane (generate-once / render-many).
+  // The tenant-scoped sceneRef is built server-side from the session tenant +
+  // a client-supplied sceneId — the client never supplies the tenant segment.
+  app.post("/api/variations/export", (req, res) => {
+    const proxyReq = req as ProxyRequest;
+    const session = proxyReq.session;
+    if (session && req.body && typeof req.body === "object") {
+      const body = req.body as Record<string, unknown>;
+      const sceneId = String(body.sceneId ?? "").replace(/[^A-Za-z0-9_-]/g, "");
+      body.sceneRef = `tenant/${session.tenantId}/scenes/${sceneId}.scene`;
+      delete body.sceneId;
+    }
+    void forward(proxyReq, res, "/jobs", rendererUrl());
+  });
+  app.get("/api/jobs/:id/status", (req, res) => {
+    void forward(req as ProxyRequest, res, `/jobs/${encodeURIComponent(req.params.id)}`, rendererUrl());
   });
 }
 

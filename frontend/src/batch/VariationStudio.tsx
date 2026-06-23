@@ -23,6 +23,7 @@ import {
 import { Button } from "@/ui/button";
 import { cn } from "@/lib/utils";
 import { useSkillsStore } from "@/skills/skills";
+import { exportVariations, pollJobStatus } from "@/api/ai";
 import {
   LOCALE_OPTIONS,
   useBatchStore,
@@ -276,9 +277,35 @@ function ReviewGrid({
   slot: AssetSlot;
   onNew: () => void;
 }) {
+  const { projectId } = useParams();
   const approved = variants.filter((v) => v.status === "approved").length;
   const resolved = variants.filter((v) => v.status === "approved" || v.status === "rejected").length;
   const allApproved = variants.length > 0 && approved === variants.length;
+  const [exportState, setExportState] = useState<{
+    phase: "idle" | "exporting" | "done" | "error";
+    msg?: string;
+    url?: string;
+  }>({ phase: "idle" });
+
+  // Generate-once / render-many: one approved scene → all sizes server-side.
+  const onExport = async () => {
+    setExportState({ phase: "exporting" });
+    try {
+      const job = await exportVariations({
+        sceneId: projectId ?? "master",
+        outputs: [
+          { width: 1080, height: 1080, format: "png" },
+          { width: 1080, height: 1920, format: "png" },
+          { width: 1920, height: 1080, format: "png" },
+        ],
+      });
+      const final = await pollJobStatus(job.jobId, { intervalMs: 800, maxAttempts: 30 });
+      if (final.status === "done") setExportState({ phase: "done", url: final.downloadUrl });
+      else setExportState({ phase: "error", msg: final.error ?? "render failed" });
+    } catch {
+      setExportState({ phase: "error", msg: "Export needs the renderer + a saved scene" });
+    }
+  };
 
   return (
     <div className="h-full overflow-y-auto">
@@ -292,16 +319,26 @@ function ReviewGrid({
             <span className="text-success">{approved} approved</span> · {resolved}/{variants.length} reviewed
           </p>
           <div className="flex items-center gap-2">
+            {exportState.phase === "done" && exportState.url && (
+              <a href={exportState.url} className="text-xs text-success hover:underline" target="_blank" rel="noreferrer">
+                Download ready
+              </a>
+            )}
+            {exportState.phase === "error" && (
+              <span className="text-xs text-destructive">{exportState.msg}</span>
+            )}
             <Button variant="ghost" size="sm" onClick={onNew}>
               <RotateCcw /> New job
             </Button>
             <Button
               variant="primary"
               size="sm"
-              disabled={!allApproved}
-              title={allApproved ? "Export all approved variations" : "Approve every variation first"}
+              disabled={!allApproved || exportState.phase === "exporting"}
+              onClick={onExport}
+              title={allApproved ? "Render all sizes from the approved scene" : "Approve every variation first"}
             >
-              <Download /> Export all
+              {exportState.phase === "exporting" ? <Loader2 className="animate-spin" /> : <Download />}
+              {exportState.phase === "exporting" ? "Rendering…" : "Export all"}
             </Button>
           </div>
         </div>

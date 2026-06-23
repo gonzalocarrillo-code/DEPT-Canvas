@@ -63,3 +63,55 @@ export function saveScene(
 export function loadSceneFromBackend(sceneId: string): Promise<LoadSceneResult> {
   return getJson<LoadSceneResult>(`/api/scenes/${encodeURIComponent(sceneId)}`);
 }
+
+// ── Render / export (generate-once / render-many) ──────────────────────────
+export interface RenderOutputSpec {
+  width: number;
+  height: number;
+  durationSec?: number;
+  format: "png" | "jpeg" | "pdf" | "mp4";
+}
+
+export interface ExportJob {
+  jobId: string;
+  status: string;
+  estimated?: { count: number; costUsd: number; etaSec: number };
+}
+
+export interface JobStatus {
+  jobId: string;
+  status: "queued" | "rendering" | "done" | "error";
+  progress: number;
+  downloadUrl?: string;
+  error?: string;
+  outputs?: { outputRef: string; format: string; bytes?: number }[];
+}
+
+// One approved scene → many sizes server-side (never re-generated per aspect).
+// The edge resolves the tenant-scoped sceneRef from the session + this sceneId.
+export function exportVariations(body: {
+  sceneId: string;
+  outputs: RenderOutputSpec[];
+}): Promise<ExportJob> {
+  return postJson<ExportJob>("/api/variations/export", body);
+}
+
+export function getJobStatus(jobId: string): Promise<JobStatus> {
+  return getJson<JobStatus>(`/api/jobs/${encodeURIComponent(jobId)}/status`);
+}
+
+/** Poll until the render job is done/error or the attempt budget is exhausted. */
+export async function pollJobStatus(
+  jobId: string,
+  opts: { intervalMs?: number; maxAttempts?: number } = {},
+): Promise<JobStatus> {
+  const intervalMs = opts.intervalMs ?? 1000;
+  const maxAttempts = opts.maxAttempts ?? 60;
+  let last: JobStatus | undefined;
+  for (let i = 0; i < maxAttempts; i++) {
+    last = await getJobStatus(jobId);
+    if (last.status === "done" || last.status === "error") return last;
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  return last ?? { jobId, status: "error", progress: 0, error: "timeout" };
+}
