@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 // MD skills — reusable Markdown instruction packs the AI applies to a *specific*
 // asset job (e.g. transcreation for Meta). The body is injected into the generation
@@ -7,9 +8,10 @@ export interface Skill {
   id: string;
   name: string;
   channel: string;
-  scope: "transcreation" | "copy" | "image" | "resize";
+  scope: string;
   summary: string;
   body: string; // Markdown
+  builtin?: boolean;
 }
 
 export const BUILTIN_SKILLS: Skill[] = [
@@ -19,6 +21,7 @@ export const BUILTIN_SKILLS: Skill[] = [
     channel: "Meta",
     scope: "transcreation",
     summary: "Meta ad copy specs + transcreation rules (headline ≤40, primary ≤125).",
+    builtin: true,
     body: `# Meta Ads — transcreation skill
 
 **Use for:** transcreating ad copy (headlines / primary text) for Meta placements.
@@ -42,6 +45,7 @@ export const BUILTIN_SKILLS: Skill[] = [
     channel: "TikTok",
     scope: "transcreation",
     summary: "Casual, native hook in the first 3 words; sound-on framing.",
+    builtin: true,
     body: `# TikTok — native hook skill
 
 - Hook in the **first 3 words**; write like a creator, not a brand.
@@ -55,6 +59,7 @@ export const BUILTIN_SKILLS: Skill[] = [
     channel: "Google",
     scope: "copy",
     summary: "Responsive display limits: headline ≤30, description ≤90.",
+    builtin: true,
     body: `# Google Display — responsive copy skill
 
 - Headline ≤30 chars; long headline ≤90; description ≤90.
@@ -67,6 +72,7 @@ export const BUILTIN_SKILLS: Skill[] = [
     channel: "Any",
     scope: "image",
     summary: "Clean studio product imagery; keep brand colors and safe zones.",
+    builtin: true,
     body: `# Product photo — image skill
 
 - Studio-clean, soft shadow, neutral or brand-tinted background.
@@ -75,12 +81,49 @@ export const BUILTIN_SKILLS: Skill[] = [
   },
 ];
 
+function makeId(): string {
+  try {
+    return `skill-${crypto.randomUUID().slice(0, 8)}`;
+  } catch {
+    return `skill-${Math.floor(Math.random() * 1e9).toString(36)}`;
+  }
+}
+
+export type NewSkill = Omit<Skill, "id" | "builtin">;
+
 interface SkillsState {
   skills: Skill[];
   getSkill: (id: string | null | undefined) => Skill | undefined;
+  addSkill: (input: NewSkill) => string;
+  updateSkill: (id: string, patch: Partial<NewSkill>) => void;
+  deleteSkill: (id: string) => void;
+  resetBuiltins: () => void;
 }
 
-export const useSkillsStore = create<SkillsState>()((_set, get) => ({
-  skills: BUILTIN_SKILLS,
-  getSkill: (id) => (id ? get().skills.find((s) => s.id === id) : undefined),
-}));
+export const useSkillsStore = create<SkillsState>()(
+  persist(
+    (set, get) => ({
+      skills: BUILTIN_SKILLS,
+      getSkill: (id) => (id ? get().skills.find((s) => s.id === id) : undefined),
+      addSkill: (input) => {
+        const id = makeId();
+        set((s) => ({ skills: [...s.skills, { ...input, id }] }));
+        return id;
+      },
+      updateSkill: (id, patch) =>
+        set((s) => ({
+          skills: s.skills.map((sk) => (sk.id === id ? { ...sk, ...patch } : sk)),
+        })),
+      deleteSkill: (id) =>
+        set((s) => ({ skills: s.skills.filter((sk) => sk.id !== id) })),
+      // Re-add any built-ins that were deleted, without touching custom skills.
+      resetBuiltins: () =>
+        set((s) => {
+          const have = new Set(s.skills.map((x) => x.id));
+          const missing = BUILTIN_SKILLS.filter((b) => !have.has(b.id));
+          return { skills: [...missing, ...s.skills] };
+        }),
+    }),
+    { name: "dept-canvas-skills", version: 1 },
+  ),
+);
