@@ -35,6 +35,7 @@ export const TOOL_CAPABILITIES: Record<string, Capability> = {
   apply_brand_kit: "brand:manage",
   apply_lock_manifest: "brand:manage",
   generate_asset: "scene:write",
+  generate_asset_standalone: "scene:write",
   save_scene: "scene:write",
   render_variant: "scene:write",
   apply_intent: "scene:write",

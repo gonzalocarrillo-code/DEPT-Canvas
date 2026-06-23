@@ -78,8 +78,30 @@ async def generate(
             seed = req.prompt.strip() or "Untitled"
             return JSONResponse({"kind": req.kind, "text": f"{seed} ·"})
         return JSONResponse({"kind": req.kind})
-    # Phase 2: route through scene-mcp generate_asset (moderation + audit + tenancy).
-    return JSONResponse(
-        {"error": "generate_not_wired", "detail": "real generation lands in Phase 2 via scene-mcp"},
-        status_code=501,
-    )
+
+    # Real: route through scene-mcp generate_asset_standalone so the 3-checkpoint
+    # moderation, audit, and tenant scoping apply. Tenant comes from the edge header
+    # (never the body) and becomes the scene-mcp dev token's tenant.
+    from common.mcp_client import build_scene_mcp_server
+
+    asset_type = "image" if req.kind == "image" else "copy"
+    tenant = x_tenant_id or "tenant-dev"
+    server = build_scene_mcp_server(tenant_id=tenant)
+    try:
+        async with server:
+            result = await server.call_tool(
+                "generate_asset_standalone",
+                {"assetType": asset_type, "prompt": req.prompt},
+            )
+        data = result.structuredContent or {}
+        out: dict = {"kind": req.kind}
+        if data.get("text") is not None:
+            out["text"] = data["text"]
+        if data.get("dataUrl") is not None:
+            out["dataUrl"] = data["dataUrl"]
+        return JSONResponse(out)
+    except Exception as exc:  # upstream/tool failure → 502, frontend falls back
+        return JSONResponse(
+            {"error": "generation_failed", "detail": str(exc)[:300]},
+            status_code=502,
+        )
