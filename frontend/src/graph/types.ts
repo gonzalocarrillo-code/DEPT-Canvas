@@ -28,12 +28,15 @@ export interface CanvasNodeData {
   count?: number;
   /** Brand-locked: regeneration disabled in the UI (server re-validates on save). */
   locked?: boolean;
+  // ── per-process controls (shape depends on kind) ──
+  skillId?: string | null;
+  locales?: string[]; // transcreate
+  formats?: string[]; // resize
+  preset?: string; // animate (motion preset id)
   // ── variation-set (the job node) ──
   targetSlotIds?: string[];
   slotInstructions?: Record<string, string>;
-  skillId?: string | null;
   variationMode?: "generate" | "transcreate";
-  locales?: string[];
   // ── variant (one produced scene branched off a set) ──
   setId?: string;
   slotId?: string;

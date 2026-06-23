@@ -29,9 +29,14 @@ import { kindInfo } from "../types";
 import { useGraphStore } from "../store";
 import { TransformMenu } from "../TransformMenu";
 import { VariationComposer } from "../VariationComposer";
-import { MASTER_SLOTS } from "@/batch/batchStore";
+import { MASTER_SLOTS, LOCALE_OPTIONS } from "@/batch/batchStore";
 import { useSkillsStore } from "@/skills/skills";
+import { FORMATS } from "@/editor/types";
+import { MOTION_PRESETS } from "@/editor/motionPresets";
 import { cn } from "@/lib/utils";
+
+// Kinds that show a visual thumbnail when done (others show their controls only).
+const VISUAL_KINDS = new Set<NodeKind>(["image", "picture-idea", "video"]);
 
 const kindIcon: Record<NodeKind, typeof FileText> = {
   brief: FileText,
@@ -88,8 +93,6 @@ function GenericNode({ id, data, selected }: { id: string; data: CanvasNodeData;
   const hue = data.hue ?? kindInfo[data.kind].hue;
   const locked = Boolean(data.locked);
   const isGenerating = data.status === "generating";
-  // Every generation process carries a prompt + an optional MD skill.
-  const hasSkill = data.kind !== "brief";
   // The master + any finished visual asset can fan out variations.
   const canVary =
     !locked && data.status === "done" && (data.kind === "image" || data.kind === "video");
@@ -104,8 +107,13 @@ function GenericNode({ id, data, selected }: { id: string; data: CanvasNodeData;
     setMenuOpen(false);
   };
 
-  const showThumbnail = data.status === "done" && data.kind !== "brief";
-  const displayCount = data.count ?? 0;
+  const showThumbnail = data.status === "done" && VISUAL_KINDS.has(data.kind);
+  const displayCount =
+    data.kind === "transcreate"
+      ? (data.locales?.length ?? 0)
+      : data.kind === "resize"
+        ? (data.formats?.length ?? 0)
+        : (data.count ?? 0);
 
   return (
     <div
@@ -143,10 +151,10 @@ function GenericNode({ id, data, selected }: { id: string; data: CanvasNodeData;
         )}
       </div>
 
-      <div className="px-3 py-2">
-        {showThumbnail ? (
+      <div className="grid gap-2 px-3 py-2">
+        {showThumbnail && (
           <div
-            className="relative h-24 w-full overflow-hidden rounded-md"
+            className="relative h-20 w-full overflow-hidden rounded-md"
             style={{ background: `radial-gradient(130% 130% at 0% 0%, hsl(${hue} 55% 26%), hsl(${hue} 45% 10%))` }}
           >
             <div
@@ -154,32 +162,8 @@ function GenericNode({ id, data, selected }: { id: string; data: CanvasNodeData;
               style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.14) 1px, transparent 1px)", backgroundSize: "14px 14px" }}
             />
           </div>
-        ) : (
-          <textarea
-            className="nodrag h-16 w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/60"
-            placeholder="Describe what to generate…"
-            value={data.prompt ?? ""}
-            onChange={(e) => updateNodeData(id, { prompt: e.target.value })}
-          />
         )}
-        {hasSkill && (
-          <label className="mt-2 flex items-center gap-1.5">
-            <Sparkles className="size-3 shrink-0 text-primary" />
-            <select
-              value={data.skillId ?? ""}
-              onChange={(e) => updateNodeData(id, { skillId: e.target.value || null })}
-              title="MD skill — scopes the AI for this process"
-              className="nodrag min-w-0 flex-1 rounded border border-border bg-background px-1.5 py-1 text-[11px] text-foreground outline-none focus:border-primary/60"
-            >
-              <option value="">No skill</option>
-              {skills.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        <ProcessControls id={id} data={data} skills={skills} updateNodeData={updateNodeData} />
       </div>
 
       <div className="flex items-center gap-2 px-3 pb-2 text-[11px] text-muted-foreground">
@@ -432,6 +416,126 @@ function VariationSetNode({ id, data, selected }: { id: string; data: CanvasNode
         </button>
       </div>
     </div>
+  );
+}
+
+// Body controls matched to each process kind — no more "prompt" on a resize.
+function ProcessControls({
+  id,
+  data,
+  skills,
+  updateNodeData,
+}: {
+  id: string;
+  data: CanvasNodeData;
+  skills: { id: string; name: string }[];
+  updateNodeData: (id: string, patch: Partial<CanvasNodeData>) => void;
+}) {
+  const selectCls =
+    "nodrag min-w-0 flex-1 rounded border border-border bg-background px-1.5 py-1 text-[11px] text-foreground outline-none focus:border-primary/60";
+  const chipCls =
+    "nodrag rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:bg-accent data-[active=true]:border-primary/50 data-[active=true]:bg-accent data-[active=true]:text-foreground";
+
+  const skillRow = (
+    <label className="flex items-center gap-1.5">
+      <Sparkles className="size-3 shrink-0 text-primary" />
+      <select
+        value={data.skillId ?? ""}
+        onChange={(e) => updateNodeData(id, { skillId: e.target.value || null })}
+        title="MD skill — scopes the AI for this process"
+        className={selectCls}
+      >
+        <option value="">No skill</option>
+        {skills.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+
+  const promptBox = (placeholder: string) => (
+    <textarea
+      className="nodrag h-14 w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/60"
+      placeholder={placeholder}
+      value={data.prompt ?? ""}
+      onChange={(e) => updateNodeData(id, { prompt: e.target.value })}
+    />
+  );
+
+  if (data.kind === "brief") return promptBox("Describe the campaign brief…");
+
+  if (data.kind === "transcreate") {
+    const locales = data.locales ?? [];
+    const toggle = (l: string) =>
+      updateNodeData(id, {
+        locales: locales.includes(l) ? locales.filter((x) => x !== l) : [...locales, l],
+      });
+    return (
+      <>
+        <div>
+          <p className="text-meta mb-1 uppercase">Locales</p>
+          <div className="flex flex-wrap gap-1">
+            {LOCALE_OPTIONS.map((l) => (
+              <button key={l} onClick={() => toggle(l)} data-active={locales.includes(l)} className={chipCls}>
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+        {skillRow}
+      </>
+    );
+  }
+
+  if (data.kind === "resize") {
+    const formats = data.formats ?? [];
+    const toggle = (f: string) =>
+      updateNodeData(id, {
+        formats: formats.includes(f) ? formats.filter((x) => x !== f) : [...formats, f],
+      });
+    return (
+      <div>
+        <p className="text-meta mb-1 uppercase">Output sizes</p>
+        <div className="flex flex-wrap gap-1">
+          {Object.keys(FORMATS).map((f) => (
+            <button key={f} onClick={() => toggle(f)} data-active={formats.includes(f)} className={chipCls}>
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (data.kind === "animate") {
+    return (
+      <label className="flex items-center gap-1.5">
+        <Play className="size-3 shrink-0 text-primary" />
+        <select
+          value={data.preset ?? ""}
+          onChange={(e) => updateNodeData(id, { preset: e.target.value || undefined })}
+          title="Motion preset (Tier-1 CE.SDK)"
+          className={selectCls}
+        >
+          <option value="">Motion preset…</option>
+          {MOTION_PRESETS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
+  // image · picture-idea · video · copy
+  return (
+    <>
+      {promptBox(data.kind === "copy" ? "What should this copy say?" : "Describe the image to generate…")}
+      {skillRow}
+    </>
   );
 }
 

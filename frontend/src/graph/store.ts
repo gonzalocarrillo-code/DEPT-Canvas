@@ -51,8 +51,6 @@ function makeId(): string {
   }
 }
 
-const countedKinds = new Set<NodeKind>(["transcreate", "resize", "copy"]);
-
 const HISTORY_LIMIT = 50;
 type GraphSnap = { nodes: CanvasNode[]; edges: CanvasEdge[] };
 const cloneNodes = (ns: CanvasNode[]): CanvasNode[] =>
@@ -357,6 +355,9 @@ export const useGraphStore = create<GraphState>()((set, get) => {
         status: "generating",
         model: kindInfo[kind].defaultModel,
         mode: "compose",
+        // Kind-appropriate defaults so each process starts with sensible controls.
+        ...(kind === "transcreate" ? { locales: ["ES", "FR", "DE"] } : {}),
+        ...(kind === "resize" ? { formats: ["9:16", "1:1", "16:9"] } : {}),
       },
     };
     set({
@@ -366,12 +367,12 @@ export const useGraphStore = create<GraphState>()((set, get) => {
         get().edges,
       ),
     });
-    // Simulate generation (P4 wires the real generate_asset call).
+    // Simulate generation (real generate_asset wiring lives in the backend).
     window.setTimeout(() => {
       get().updateNodeData(id, {
         status: "done",
         hue: kindInfo[kind].hue,
-        ...(countedKinds.has(kind) ? { count: 3 } : {}),
+        ...(kind === "copy" ? { count: 3 } : {}),
       });
     }, 1500);
   },
@@ -468,7 +469,9 @@ export const useGraphStore = create<GraphState>()((set, get) => {
           model: kindInfo[kind].defaultModel,
           hue: kindInfo[kind].hue,
           prompt: n.prompt,
-          ...(countedKinds.has(kind) ? { count: 3 } : {}),
+          ...(kind === "transcreate" ? { locales: ["ES", "FR", "DE"] } : {}),
+          ...(kind === "resize" ? { formats: ["9:16", "1:1", "16:9"] } : {}),
+          ...(kind === "copy" ? { count: 3 } : {}),
         },
       });
       edges.push({ id: `e-master-${id}`, source: "master", target: id });
