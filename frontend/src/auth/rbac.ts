@@ -1,13 +1,8 @@
-export const RBAC_ROLES = [
-  "viewer",
-  "creator",
-  "brand_owner",
-  "approver",
-  "tenant_admin",
-] as const;
-
-export type Role = (typeof RBAC_ROLES)[number];
-
+// Mirrors scene-mcp/src/auth/capability-matrix.ts EXACTLY. The UI only *reflects*
+// these; the edge + scene-MCP server are the authoritative enforcement boundary
+// (every tool call re-checks the capability). In production this matrix is served
+// by the backend so there is a single source of truth.
+export type Role = "viewer" | "creator" | "brand_owner" | "approver" | "tenant_admin";
 export type Capability =
   | "scene:read"
   | "scene:create"
@@ -15,6 +10,31 @@ export type Capability =
   | "brand:manage"
   | "content:approve"
   | "tenant:admin";
+
+export const ALL_ROLES: Role[] = ["viewer", "creator", "brand_owner", "approver", "tenant_admin"];
+export const ALL_CAPABILITIES: Capability[] = [
+  "scene:read",
+  "scene:create",
+  "scene:write",
+  "brand:manage",
+  "content:approve",
+  "tenant:admin",
+];
+
+export const CAPABILITY_MATRIX: Record<Role, Capability[]> = {
+  viewer: ["scene:read"],
+  creator: ["scene:read", "scene:create", "scene:write"],
+  brand_owner: ["scene:read", "scene:create", "scene:write", "brand:manage"],
+  approver: ["scene:read", "scene:create", "scene:write", "content:approve"],
+  tenant_admin: [
+    "scene:read",
+    "scene:create",
+    "scene:write",
+    "brand:manage",
+    "content:approve",
+    "tenant:admin",
+  ],
+};
 
 export const ROLE_LABELS: Record<Role, string> = {
   viewer: "Viewer",
@@ -24,31 +44,23 @@ export const ROLE_LABELS: Record<Role, string> = {
   tenant_admin: "Tenant admin",
 };
 
-export const ROLE_CAPABILITIES = {
-  viewer: ["scene:read"],
-  creator: ["scene:read", "scene:create", "scene:write"],
-  brand_owner: ["scene:read", "scene:create", "scene:write", "brand:manage"],
-  approver: ["scene:read", "content:approve"],
-  tenant_admin: [
-    "scene:read",
-    "scene:create",
-    "scene:write",
-    "brand:manage",
-    "content:approve",
-    "tenant:admin",
-  ],
-} as const satisfies Record<Role, readonly Capability[]>;
+export const ROLE_DESCRIPTIONS: Record<Role, string> = {
+  viewer: "Read-only access to scenes and variations.",
+  creator: "Create and edit scenes and assets.",
+  brand_owner: "Creator plus brand kit and lock management.",
+  approver: "Creator plus content approval for delivery.",
+  tenant_admin: "Full access including users, brand, approval and tenant settings.",
+};
 
-export function capabilitiesForRole(role: Role): readonly Capability[] {
-  return ROLE_CAPABILITIES[role];
-}
+export const CAPABILITY_LABELS: Record<Capability, string> = {
+  "scene:read": "View",
+  "scene:create": "Create",
+  "scene:write": "Edit",
+  "brand:manage": "Brand & locks",
+  "content:approve": "Approve",
+  "tenant:admin": "Tenant admin",
+};
 
-export function hasCapabilityForRole(role: Role, capability: Capability): boolean {
-  return capabilitiesForRole(role).includes(capability);
-}
-
-export function assertFrontendCan(role: Role, capability: Capability): void {
-  if (!hasCapabilityForRole(role, capability)) {
-    throw new Error(`Role '${role}' is not permitted capability '${capability}'`);
-  }
+export function roleHasCapability(role: Role, cap: Capability): boolean {
+  return CAPABILITY_MATRIX[role].includes(cap);
 }

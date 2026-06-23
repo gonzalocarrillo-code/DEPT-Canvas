@@ -1,0 +1,289 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+/* Dark mode is driven by a `.dark` class on <html> (set in index.html — dark-first).
+   Declaring this custom variant disables Tailwind's default prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================================
+   Semantic theme variables — runtime-switchable (mapped into Tailwind below).
+   Dark is the primary surface; light is the alternate.
+   ============================================================================ */
+:root {
+  /* Light (alternate) */
+  --background: #ffffff;
+  --foreground: #17191f;
+  --card: #ffffff;
+  --card-foreground: #17191f;
+  --popover: #ffffff;
+  --popover-foreground: #17191f;
+  --primary: #534ab7;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f4f7;
+  --secondary-foreground: #2a2d36;
+  --muted: #f6f7f9;
+  --muted-foreground: #5f6673;
+  --accent: #f1f0fb;
+  --accent-foreground: #3b338f;
+  --border: #e6e8ee;
+  --input: #dfe3e9;
+  --ring: #6f66e8;
+  --destructive: #cf3b3b;
+  --destructive-foreground: #ffffff;
+  --success: #1f9d6b;
+  --lock: #b45309;
+  --lock-foreground: #ffffff;
+  --canvas: #f4f5f8;
+  --grid-line: #e7eaef;
+  --grid-dot: #ccd2dc;
+  --elevation-1: #ffffff;
+  --elevation-2: #f6f7f9;
+  --elevation-3: #eef0f3;
+
+  --radius: 0.625rem;
+  color-scheme: light;
+}
+
+.dark {
+  /* Dark (primary) — warm low-saturation neutral base, indigo-purple accent, amber lock */
+  --background: #0f0f14;
+  --foreground: #e9e9f1;
+  --card: #16161d;
+  --card-foreground: #e9e9f1;
+  --popover: #191921;
+  --popover-foreground: #e9e9f1;
+  --primary: #6f66e8;
+  --primary-foreground: #ffffff;
+  --secondary: #20202a;
+  --secondary-foreground: #d8d8e3;
+  --muted: #1b1b23;
+  --muted-foreground: #9a9aab;
+  --accent: #232331;
+  --accent-foreground: #ececf4;
+  --border: #282833;
+  --input: #2c2c39;
+  --ring: #6f66e8;
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --success: #46c08a;
+  --lock: #e0a93b;
+  --lock-foreground: #16161d;
+  --canvas: #0b0b10;
+  --grid-line: #191922;
+  --grid-dot: #2b2b39;
+  --elevation-1: #16161d;
+  --elevation-2: #1c1c25;
+  --elevation-3: #23232f;
+
+  color-scheme: dark;
+}
+
+/* ============================================================================
+   Map semantic vars into Tailwind's color system (inline = utilities reference
+   the var() so they switch at runtime when `.dark` toggles).
+   ============================================================================ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-lock: var(--lock);
+  --color-lock-foreground: var(--lock-foreground);
+  --color-canvas: var(--canvas);
+  --color-grid-line: var(--grid-line);
+  --color-grid-dot: var(--grid-dot);
+  --color-elevation-1: var(--elevation-1);
+  --color-elevation-2: var(--elevation-2);
+  --color-elevation-3: var(--elevation-3);
+}
+
+/* ============================================================================
+   Static design tokens (non-switchable).
+   ============================================================================ */
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --spacing-rail: 3.5rem; /* left icon rail width */
+  --spacing-topbar: 3.25rem; /* top bar height */
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============================================================================
+   Base layer.
+   ============================================================================ */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-primary) 35%, transparent);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+}
+
+/* ============================================================================
+   Utilities — high-tech grid surfaces, mono metadata.
+   ============================================================================ */
+@layer utilities {
+  /* Dot grid background for canvas-like surfaces (non-React-Flow areas). */
+  .bg-dot-grid {
+    background-color: var(--color-canvas);
+    background-image: radial-gradient(
+      var(--color-grid-dot) 1px,
+      transparent 1px
+    );
+    background-size: 20px 20px;
+    background-position: -1px -1px;
+  }
+  .bg-line-grid {
+    background-color: var(--color-canvas);
+    background-image:
+      linear-gradient(to right, var(--color-grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-grid-line) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  .text-meta {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    color: var(--color-muted-foreground);
+  }
+  .hairline {
+    border-width: 0.5px;
+  }
+  /* Editor canvas uses container-query units so the artboard + its text scale to fit. */
+  .editor-stage,
+  .editor-artboard {
+    container-type: size;
+  }
+}
+
+/* ============================================================================
+   cmdk (⌘K command palette) — styled to the design system.
+   ============================================================================ */
+@layer components {
+  [cmdk-group-heading] {
+    padding: 0.5rem 0.75rem 0.25rem;
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-muted-foreground);
+  }
+  [cmdk-item] {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    color: var(--color-foreground);
+    cursor: pointer;
+    user-select: none;
+  }
+  [cmdk-item][data-selected="true"] {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+  [cmdk-item][data-disabled="true"] {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  [cmdk-item] svg {
+    width: 1rem;
+    height: 1rem;
+    color: var(--color-muted-foreground);
+  }
+  [cmdk-item][data-selected="true"] svg {
+    color: var(--color-primary);
+  }
+}
+
+/* ============================================================================
+   React Flow theme overrides (unlayered so they win over the library defaults).
+   ============================================================================ */
+.react-flow__attribution {
+  display: none;
+}
+.react-flow__handle {
+  width: 9px;
+  height: 9px;
+  background: var(--color-primary);
+  border: 2px solid var(--color-card);
+}
+.react-flow__edge-path {
+  stroke: var(--color-border);
+  stroke-width: 1.5;
+}
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--color-primary);
+}
+.react-flow__controls {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.3);
+}
+.react-flow__controls-button {
+  width: 28px;
+  height: 28px;
+  background: var(--color-card);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-foreground);
+}
+.react-flow__controls-button:hover {
+  background: var(--color-accent);
+}
+.react-flow__controls-button svg {
+  fill: currentColor;
+  max-width: 14px;
+  max-height: 14px;
+}
+.react-flow__minimap {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}

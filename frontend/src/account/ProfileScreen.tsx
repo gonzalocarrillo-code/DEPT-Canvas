@@ -1,48 +1,74 @@
-import type { Role } from "../auth/rbac.js";
-import { Button, escapeHtml } from "../design/Button.js";
+import { useNavigate } from "react-router";
+import { LogOut } from "lucide-react";
+import { useAuthStore } from "@/auth/authStore";
+import { ROLE_LABELS, ROLE_DESCRIPTIONS } from "@/auth/rbac";
+import { Button } from "@/ui/button";
+import { cn } from "@/lib/utils";
 
-export interface ProfileScreenState {
-  readonly displayName: string;
-  readonly email: string;
-  readonly role: Role;
-  readonly tenantName: string;
-  readonly identityProvider: string;
-  readonly sessionExpiresAt: string;
+export function ProfileScreen() {
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const signOut = useAuthStore((s) => s.signOut);
+  if (!user) return null;
+  const initials = user.name.split(" ").map((w) => w[0]).join("").slice(0, 2);
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-2xl px-8 py-10">
+        <p className="text-meta">ACCOUNT</p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight">Profile</h1>
+
+        <div className="mt-6 rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center gap-4">
+            <span className="grid size-14 place-items-center rounded-full bg-primary text-lg font-semibold text-primary-foreground">
+              {initials}
+            </span>
+            <div>
+              <p className="text-base font-semibold">{user.name}</p>
+              <p className="text-sm text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+
+          <dl className="mt-6 grid gap-3 text-sm">
+            <Field label="Role" value={ROLE_LABELS[user.role]} note={ROLE_DESCRIPTIONS[user.role]} />
+            <Field label="Tenant" value={user.tenant} />
+            <Field label="Signed in via" value={user.provider} cap />
+          </dl>
+
+          <Button
+            variant="outline"
+            className="mt-6"
+            onClick={() => {
+              signOut();
+              navigate("/login", { replace: true });
+            }}
+          >
+            <LogOut /> Sign out
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-export const defaultProfileState: ProfileScreenState = {
-  displayName: "Gonzalo Carrillo",
-  email: "gonzalo@example.com",
-  role: "creator",
-  tenantName: "DEPT",
-  identityProvider: "OIDC",
-  sessionExpiresAt: "2026-06-22T18:00:00Z",
-};
-
-function formatRole(role: Role): string {
-  return role.replaceAll("_", " ");
+function Field({
+  label,
+  value,
+  note,
+  cap,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+  cap?: boolean;
+}) {
+  return (
+    <div className="border-b border-border pb-2">
+      <div className="flex items-center justify-between">
+        <dt className="text-muted-foreground">{label}</dt>
+        <dd className={cn("font-medium", cap && "capitalize")}>{value}</dd>
+      </div>
+      {note && <p className="mt-0.5 text-xs text-muted-foreground">{note}</p>}
+    </div>
+  );
 }
-
-export function renderProfileScreen(
-  state: ProfileScreenState = defaultProfileState,
-): string {
-  return `<main class="dc-account-screen" data-screen="profile">
-    <section class="dc-account-summary" aria-label="Profile">
-      <p class="dc-kicker">Account</p>
-      <h1>Profile</h1>
-      <dl>
-        <div><dt>Name</dt><dd>${escapeHtml(state.displayName)}</dd></div>
-        <div><dt>Email</dt><dd>${escapeHtml(state.email)}</dd></div>
-        <div><dt>Tenant</dt><dd>${escapeHtml(state.tenantName)}</dd></div>
-        <div><dt>Role</dt><dd data-current-role="${state.role}">${escapeHtml(formatRole(state.role))}</dd></div>
-        <div><dt>Identity provider</dt><dd>${escapeHtml(state.identityProvider)}</dd></div>
-        <div><dt>Session expires</dt><dd>${escapeHtml(state.sessionExpiresAt)}</dd></div>
-      </dl>
-      <form action="/auth/logout" method="post" data-auth-action="logout">
-        ${Button({ label: "Log out", tone: "secondary" })}
-      </form>
-    </section>
-  </main>`;
-}
-
-export default renderProfileScreen;

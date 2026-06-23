@@ -5,3 +5,6 @@ packages:
   - "frontend"
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  - '@xyflow/react@12.11.1'
+  - '@xyflow/system@0.0.78'
