@@ -71,6 +71,12 @@ def test_get_scene_mock(client: TestClient) -> None:
     assert res.json()["sceneId"] == "scene-1"
 
 
+def test_import_psd_mock_returns_sceneref(client: TestClient) -> None:
+    res = client.post("/import/psd", headers={"x-tenant-id": "tenant-a"}, json={"psd": "AAAA"})
+    assert res.status_code == 200
+    assert res.json()["sceneRef"].startswith("tenant/tenant-a/scenes/")
+
+
 def test_save_scene_acknowledges_with_lock_provenance(client: TestClient) -> None:
     res = client.post(
         "/scenes/scene-1/save",

@@ -13,9 +13,14 @@ describe("tool surface — no destructive tools", () => {
     }
   });
 
-  it("exposes the new P2/P3 tools", () => {
+  it("exposes the new P2/P3 + import tools", () => {
     expect(names).toContain("generate_asset_standalone");
     expect(names).toContain("load_scene");
+    expect(names).toContain("import_psd");
+  });
+
+  it("import_psd is a create capability (non-destructive)", () => {
+    expect(TOOL_CAPABILITIES["import_psd"]).toBe("scene:create");
   });
 
   it("every registered tool has an RBAC capability mapping", () => {

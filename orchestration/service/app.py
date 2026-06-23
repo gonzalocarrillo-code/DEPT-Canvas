@@ -47,6 +47,10 @@ class SaveSceneRequest(BaseModel):
     locked: bool = False
 
 
+class ImportPsdRequest(BaseModel):
+    psd: str = ""  # base64-encoded .psd bytes
+
+
 def scene_ops_mocked() -> bool:
     """Scene save/load short-circuit to stubs when no live scene-mcp is wired."""
     return os.getenv("DEPT_MOCK_AI") == "1"
@@ -144,6 +148,30 @@ async def get_scene(scene_id: str, x_tenant_id: Optional[str] = Header(default=N
         )
     except Exception as exc:
         return JSONResponse({"error": "scene_not_found", "detail": str(exc)[:200]}, status_code=404)
+
+
+@app.post("/import/psd")
+async def import_psd(
+    req: ImportPsdRequest,
+    x_tenant_id: Optional[str] = Header(default=None),
+) -> JSONResponse:
+    tenant = x_tenant_id or "tenant-dev"
+    if scene_ops_mocked():
+        return JSONResponse({"sceneRef": f"tenant/{tenant}/scenes/mock-import.scene", "mock": True})
+    # Authoritative import via scene-mcp import_psd (CE.SDK), tenant from the edge
+    # header → scene-mcp dev token. Produces an editable scene; returns its ref.
+    from common.mcp_client import build_scene_mcp_server
+
+    server = build_scene_mcp_server(tenant_id=tenant)
+    try:
+        async with server:
+            result = await server.call_tool("import_psd", {"psd": req.psd})
+        data = result.structuredContent or {}
+        if not data.get("sceneRef"):
+            return JSONResponse({"error": "import_failed"}, status_code=502)
+        return JSONResponse({"sceneRef": data["sceneRef"]})
+    except Exception as exc:
+        return JSONResponse({"error": "import_failed", "detail": str(exc)[:300]}, status_code=502)
 
 
 @app.post("/scenes/{scene_id}/save")

@@ -200,6 +200,9 @@ importers:
       '@dept-canvas/renderer':
         specifier: workspace:*
         version: link:../renderer
+      '@imgly/psd-importer':
+        specifier: ^0.3.0
+        version: 0.3.0(@cesdk/engine@1.76.1)(@cesdk/node@1.76.1)
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
@@ -212,6 +215,9 @@ importers:
       openai:
         specifier: ^6.44.0
         version: 6.44.0(zod@4.4.3)
+      pngjs:
+        specifier: ^7.0.0
+        version: 7.0.0
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -222,6 +228,9 @@ importers:
       '@types/node':
         specifier: ^22.15.30
         version: 22.20.0
+      '@types/pngjs':
+        specifier: ^6.0.5
+        version: 6.0.5
       '@types/supertest':
         specifier: ^7.2.0
         version: 7.2.0
@@ -806,6 +815,21 @@ packages:
     peerDependencies:
       hono: ^4
 
+  '@imgly/psd-importer@0.3.0':
+    resolution: {integrity: sha512-V4bS24XDpCwqLp9aP/1loT3caTwHhL7t5csqGtgBKJIc5QrumeAEc5B5PLdvXWQ0sEmtZslYxwLtl4zyvSkLjA==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@cesdk/engine': '>=1.72.0'
+      '@cesdk/node': '>=1.72.0'
+    peerDependenciesMeta:
+      '@cesdk/engine':
+        optional: true
+      '@cesdk/node':
+        optional: true
+
+  '@imgly/psd@0.4.0-imgly.1':
+    resolution: {integrity: sha512-cyTkgS4iMJLUK58RD8KsCbk9e6LFxSNNbH0C5hU3peYSYaq3reNyiain9wfDgJhA+luQwDDSNHwQ/AqiYItV7g==}
+
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
 
@@ -1365,6 +1389,9 @@ packages:
 
   '@types/node@22.20.0':
     resolution: {integrity: sha512-QWlFW2wf3nTjC13/DqRnBpR4ZO36VJH/JVBkA/vcnmbTBNQIlnObqyqZE1tUR7+Ni23Lda8R1BxMfbXRpCUx5g==}
+
+  '@types/pngjs@6.0.5':
+    resolution: {integrity: sha512-0k5eKfrA83JOZPppLtS2C7OUtyNAl2wKNxfyYl9Q5g9lPkgBl/9hNyAu6HuEH2J4XmIv2znEpkDd0SaZVxW6iQ==}
 
   '@types/qs@6.15.1':
     resolution: {integrity: sha512-GZHUBZR9hckSUhrxmp1nG6NwdpM9fCunJwyThLW1X3AyHgd9IlHb6VANpQQqDr2o/qQp6McZ3y/IA2rVzKzSbw==}
@@ -2308,6 +2335,10 @@ packages:
     resolution: {integrity: sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==}
     engines: {node: '>=16.20.0'}
 
+  pngjs@7.0.0:
+    resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
+    engines: {node: '>=14.19.0'}
+
   postcss@8.5.15:
     resolution: {integrity: sha512-FfR8sjd4em2T6fb3I2MwAJU7HWVMr9zba+enmQeeWFfCbm+UOC/0X4DS8XtpUTMwWMGbjKYP7xjfNekzyGmB3A==}
     engines: {node: ^10 || ^12 || >=14}
@@ -3210,6 +3241,15 @@ snapshots:
     dependencies:
       hono: 4.12.26
 
+  '@imgly/psd-importer@0.3.0(@cesdk/engine@1.76.1)(@cesdk/node@1.76.1)':
+    dependencies:
+      '@imgly/psd': 0.4.0-imgly.1
+    optionalDependencies:
+      '@cesdk/engine': 1.76.1
+      '@cesdk/node': 1.76.1
+
+  '@imgly/psd@0.4.0-imgly.1': {}
+
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
@@ -3695,6 +3735,10 @@ snapshots:
   '@types/node@22.20.0':
     dependencies:
       undici-types: 6.21.0
+
+  '@types/pngjs@6.0.5':
+    dependencies:
+      '@types/node': 22.20.0
 
   '@types/qs@6.15.1': {}
 
@@ -4639,6 +4683,8 @@ snapshots:
   picomatch@4.0.4: {}
 
   pkce-challenge@5.0.1: {}
+
+  pngjs@7.0.0: {}
 
   postcss@8.5.15:
     dependencies:

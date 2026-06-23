@@ -89,6 +89,14 @@ export const SaveSceneOutput = z.object({
   sceneRef: z.string(),
 });
 
+export const ImportPsdInput = z.object({
+  psd: z.string(), // base64-encoded .psd bytes
+});
+
+export const ImportPsdOutput = z.object({
+  sceneRef: z.string(),
+});
+
 export const LoadSceneInput = z.object({
   sceneRef: z.string(),
 });

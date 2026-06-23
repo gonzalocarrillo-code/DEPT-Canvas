@@ -117,6 +117,10 @@ export function registerAppRoutes(app: Express): void {
   app.post("/api/scenes/:id/save", (req, res) => {
     void forward(req as ProxyRequest, res, `/scenes/${encodeURIComponent(req.params.id)}/save`);
   });
+  // Server-side design-file import (PSD via CE.SDK) → orchestration → scene-mcp.
+  app.post("/api/import/psd", (req, res) => {
+    void forward(req as ProxyRequest, res, "/import/psd");
+  });
 
   // Render/export goes to the renderer data plane (generate-once / render-many).
   // The tenant-scoped sceneRef is built server-side from the session tenant +

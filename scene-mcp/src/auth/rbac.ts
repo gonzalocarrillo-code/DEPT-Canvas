@@ -38,6 +38,7 @@ export const TOOL_CAPABILITIES: Record<string, Capability> = {
   generate_asset_standalone: "scene:write",
   save_scene: "scene:write",
   load_scene: "scene:read",
+  import_psd: "scene:create",
   render_variant: "scene:write",
   apply_intent: "scene:write",
   stagger: "scene:write",
