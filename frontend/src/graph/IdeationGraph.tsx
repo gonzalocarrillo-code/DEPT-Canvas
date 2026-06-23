@@ -10,7 +10,7 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { useShallow } from "zustand/react/shallow";
-import { Plus } from "lucide-react";
+import { Plus, Download } from "lucide-react";
 import { useGraphStore } from "./store";
 import { useGraphShortcuts } from "./useGraphShortcuts";
 import { nodeTypes } from "./nodes";
@@ -62,6 +62,37 @@ function AddNodeMenu() {
         </>
       )}
     </div>
+  );
+}
+
+function ExportApprovedButton() {
+  const nodes = useGraphStore((s) => s.nodes);
+  const approved = nodes.filter((n) => n.data.kind === "variant" && n.data.approval === "approved");
+  const exportAll = () => {
+    const manifest = {
+      exportedAt: new Date().toISOString(),
+      count: approved.length,
+      variants: approved.map((v) => ({ id: v.id, delta: v.data.delta, slot: v.data.slotId, set: v.data.setId })),
+      note: "generate-once / render-many: each approved scene renders to all sizes server-side",
+    };
+    const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "approved-variants.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <button
+      onClick={exportAll}
+      disabled={approved.length === 0}
+      title="Export all approved variants across the graph"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent disabled:opacity-40"
+    >
+      <Download className="size-3.5" /> Export approved
+      {approved.length > 0 && <span className="font-mono text-primary">{approved.length}</span>}
+    </button>
   );
 }
 
@@ -120,6 +151,9 @@ function Flow({ projectId }: { projectId: string }) {
     >
       <Panel position="top-left">
         <AddNodeMenu />
+      </Panel>
+      <Panel position="top-right">
+        <ExportApprovedButton />
       </Panel>
       <Background
         variant={BackgroundVariant.Dots}

@@ -8,9 +8,12 @@ export type NodeKind =
   | "transcreate"
   | "resize"
   | "animate"
-  | "picture-idea";
+  | "picture-idea"
+  | "variation-set"
+  | "variant";
 
 export type NodeStatus = "idle" | "queued" | "generating" | "done" | "error";
+export type VariantApproval = "pending" | "approved" | "rejected";
 
 export interface CanvasNodeData {
   kind: NodeKind;
@@ -25,6 +28,21 @@ export interface CanvasNodeData {
   count?: number;
   /** Brand-locked: regeneration disabled in the UI (server re-validates on save). */
   locked?: boolean;
+  // ── variation-set (the job node) ──
+  targetSlotIds?: string[];
+  slotInstructions?: Record<string, string>;
+  skillId?: string | null;
+  variationMode?: "generate" | "transcreate";
+  locales?: string[];
+  // ── variant (one produced scene branched off a set) ──
+  setId?: string;
+  slotId?: string;
+  /** Human label of the varied axis, e.g. "Background · v2" or "Headline · ES". */
+  delta?: string;
+  approval?: VariantApproval;
+  variantText?: string;
+  /** Master was re-edited after this variant was derived. */
+  stale?: boolean;
   // React Flow node data must be index-compatible.
   [key: string]: unknown;
 }
@@ -47,4 +65,6 @@ export const kindInfo: Record<NodeKind, KindInfo> = {
   resize: { label: "Resize", hue: 35, defaultModel: "engine" },
   animate: { label: "Animate", hue: 280, defaultModel: "motion-engine" },
   "picture-idea": { label: "New picture idea", hue: 95, defaultModel: "gpt-image-2" },
+  "variation-set": { label: "Variations", hue: 175, defaultModel: "orchestrator" },
+  variant: { label: "Variant", hue: 200, defaultModel: "gpt-image-2" },
 };

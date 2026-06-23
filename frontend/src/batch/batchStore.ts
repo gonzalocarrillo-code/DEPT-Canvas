@@ -64,12 +64,12 @@ function makeId(): string {
   }
 }
 
-function hueFor(i: number): number {
+export function hueFor(i: number): number {
   return 200 + ((i * 47) % 150);
 }
 
 // Simulated AI output. Replaced by /api/ai/generate (OpenAI) once OPENAI_API_KEY is set.
-function fakeText(slot: AssetSlot, prompt: string, i: number, locale?: string): string {
+export function fakeText(slot: AssetSlot, prompt: string, i: number, locale?: string): string {
   if (locale) {
     if (slot.id === "headline" && HEADLINE_TRANSCREATION[locale]) {
       return HEADLINE_TRANSCREATION[locale];

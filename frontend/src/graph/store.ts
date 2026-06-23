@@ -10,6 +10,16 @@ import {
 import type { CanvasNode, CanvasEdge, CanvasNodeData, NodeKind } from "./types";
 import { kindInfo } from "./types";
 import { seedGraph } from "./seed";
+import { MASTER_SLOTS, hueFor, fakeText, type AssetSlot } from "../batch/batchStore";
+
+export interface VariationConfig {
+  targetSlotIds: string[];
+  slotInstructions: Record<string, string>;
+  mode: "generate" | "transcreate";
+  count: number;
+  locales: string[];
+  skillId: string | null;
+}
 
 function makeId(): string {
   try {
@@ -52,6 +62,10 @@ interface GraphState {
   redo: () => void;
   copyNodes: () => void;
   pasteNodes: () => void;
+  createVariationSet: (masterId: string, config: VariationConfig) => void;
+  approveVariant: (id: string) => void;
+  rejectVariant: (id: string) => void;
+  approveAllInSet: (setId: string) => void;
 }
 
 // React Flow's recommended state-management pattern: the store is the single source
@@ -139,6 +153,98 @@ export const useGraphStore = create<GraphState>()((set, get) => {
       nodes: [...s.nodes.map((n) => ({ ...n, selected: false })), ...pasted],
     }));
   },
+  // Branch a multi-slot variation job off a master: one variation-set node +
+  // N variant child nodes (one lane per slot), each an editable scene.
+  createVariationSet: (masterId, config) => {
+    const master = get().nodes.find((n) => n.id === masterId);
+    if (!master) return;
+    // Locks enforced: drop any locked slot before it can become a varied axis.
+    const slots = config.targetSlotIds
+      .map((id) => MASTER_SLOTS.find((s) => s.id === id))
+      .filter((s): s is AssetSlot => Boolean(s) && !s!.locked)
+      .slice(0, 3);
+    if (!slots.length) return;
+    commit(snapshot());
+
+    const px = master.position.x;
+    const py = master.position.y;
+    const setId = `vset-${makeId()}`;
+    const setInfo = kindInfo["variation-set"];
+    const setNode: CanvasNode = {
+      id: setId,
+      type: "canvasNode",
+      position: { x: px + 360, y: py },
+      data: {
+        kind: "variation-set",
+        title: "Variations",
+        status: "done",
+        model: setInfo.defaultModel,
+        hue: setInfo.hue,
+        targetSlotIds: slots.map((s) => s.id),
+        slotInstructions: config.slotInstructions,
+        skillId: config.skillId,
+        variationMode: config.mode,
+        locales: config.locales,
+      },
+    };
+
+    const nodes: CanvasNode[] = [setNode];
+    const edges: CanvasEdge[] = [{ id: `e-${masterId}-${setId}`, source: masterId, target: setId }];
+    const COL = 280;
+    const ROW = 230;
+    const laneBaseY = py - ((slots.length - 1) * ROW) / 2;
+    let gi = 0;
+    slots.forEach((slot, lane) => {
+      const effMode = slot.type === "text" ? config.mode : "generate";
+      const units =
+        effMode === "transcreate"
+          ? config.locales
+          : Array.from({ length: config.count }, (_, i) => i);
+      const instr = config.slotInstructions[slot.id] ?? "";
+      units.forEach((unit, i) => {
+        const locale = effMode === "transcreate" ? (unit as string) : undefined;
+        const delta = `${slot.name} · ${locale ?? `v${i + 1}`}`;
+        const vid = `variant-${makeId()}`;
+        nodes.push({
+          id: vid,
+          type: "canvasNode",
+          position: { x: px + 680 + i * COL, y: laneBaseY + lane * ROW },
+          data: {
+            kind: "variant",
+            title: delta,
+            status: "generating",
+            model: slot.type === "text" ? "gpt-5.4-mini" : "gpt-image-2",
+            hue: hueFor(gi),
+            setId,
+            slotId: slot.id,
+            delta,
+            approval: "pending",
+            variantText: slot.type === "text" ? fakeText(slot, instr, i, locale) : undefined,
+          },
+        });
+        edges.push({ id: `e-${setId}-${vid}`, source: setId, target: vid, label: delta });
+        gi++;
+      });
+    });
+
+    set((s) => ({ nodes: [...s.nodes, ...nodes], edges: [...s.edges, ...edges] }));
+    // Simulate generation: flip each variant generating → done (P4 wires real gen).
+    nodes
+      .filter((n) => n.data.kind === "variant")
+      .forEach((n, idx) =>
+        window.setTimeout(() => get().updateNodeData(n.id, { status: "done" }), 700 + idx * 160),
+      );
+  },
+  approveVariant: (id) => get().updateNodeData(id, { approval: "approved" }),
+  rejectVariant: (id) => get().updateNodeData(id, { approval: "rejected" }),
+  approveAllInSet: (setId) =>
+    set((s) => ({
+      nodes: s.nodes.map((n) =>
+        n.data.kind === "variant" && n.data.setId === setId && n.data.status === "done"
+          ? { ...n, data: { ...n.data, approval: "approved" } }
+          : n,
+      ),
+    })),
   updateNodeData: (id, patch) =>
     set({
       nodes: get().nodes.map((n) =>
