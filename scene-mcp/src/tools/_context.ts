@@ -29,7 +29,20 @@ export async function withToolAudit<T>(
 ): Promise<T> {
   const cap = capabilityForTool(tool);
   if (cap) {
-    assertCan(ctx, cap);
+    try {
+      assertCan(ctx, cap);
+    } catch (error) {
+      // Audit denied (privilege-escalation) attempts, not just successes/errors.
+      await writeAudit({
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        tool,
+        args,
+        outcome: "error",
+        detail: error instanceof Error ? error.message : "capability denied",
+      });
+      throw error;
+    }
   }
 
   try {

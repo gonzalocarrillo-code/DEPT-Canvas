@@ -91,10 +91,14 @@ describe("generate_asset_standalone", () => {
     ).rejects.toThrow(/Checkpoint 2/);
   });
 
-  it("denies a viewer (RBAC: needs scene:write)", async () => {
+  it("denies a viewer (RBAC: needs scene:write) and audits the denial", async () => {
     setOpenAiClientForTests(mockClient());
     await expect(
       generateAssetStandalone({ ...ctx, role: "viewer" }, { assetType: "copy", prompt: "x" }),
     ).rejects.toThrow();
+    const log = await readAuditLog();
+    const record = log.at(-1);
+    expect(record?.tool).toBe("generate_asset_standalone");
+    expect(record?.outcome).toBe("error");
   });
 });

@@ -7,7 +7,14 @@ export class LocalFsSceneStorage implements SceneStorage {
 
   /** Absolute path for a persisted scene file (tests / local inspection). */
   resolveFilePath(tenantId: string, sceneId: string): string {
-    return path.join(this.rootDir, tenantId, `${sceneId}.scene`);
+    const target = path.join(this.rootDir, tenantId, `${sceneId}.scene`);
+    // Defense in depth: never let a crafted tenantId/sceneId escape the root.
+    const root = path.resolve(this.rootDir);
+    const resolved = path.resolve(target);
+    if (resolved !== root && !resolved.startsWith(root + path.sep)) {
+      throw new Error("Path traversal denied");
+    }
+    return target;
   }
 
   async saveScene(

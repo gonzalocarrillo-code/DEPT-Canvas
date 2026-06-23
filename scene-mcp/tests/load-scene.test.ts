@@ -45,6 +45,12 @@ describe("load_scene", () => {
     await expect(loadScene(ctx, { sceneRef: "not-a-ref" })).rejects.toThrow();
   });
 
+  it("storage layer blocks path traversal out of the tenant root (defense in depth)", () => {
+    const store = new LocalFsSceneStorage(dir);
+    expect(() => store.resolveFilePath("tenant-a", "../../escape")).toThrow(/traversal/i);
+    expect(() => store.resolveFilePath("../..", "x")).toThrow(/traversal/i);
+  });
+
   it("allows a viewer to read (scene:read) and audits the load", async () => {
     const ref = await getSceneStorage().saveScene("tenant-a", "scene-2", Buffer.from("y", "utf8"));
     const out = await loadScene({ ...ctx, role: "viewer" }, { sceneRef: ref });

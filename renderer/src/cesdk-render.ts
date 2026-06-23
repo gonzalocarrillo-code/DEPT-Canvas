@@ -108,8 +108,11 @@ export async function renderMp4ViaContainer(
       [
         "run",
         "--rm",
+        // Pass the var by NAME only — never embed the secret in argv (argv is
+        // world-readable via ps / /proc/<pid>/cmdline). Docker reads the value
+        // from this process's inherited environment.
         "-e",
-        `CESDK_LICENSE=${process.env.CESDK_LICENSE}`,
+        "CESDK_LICENSE",
         CESDK_RENDERER_IMAGE,
         "--input",
         sceneRef,
@@ -120,7 +123,7 @@ export async function renderMp4ViaContainer(
         "--height",
         String(spec.height),
       ],
-      { stdio: "ignore" },
+      { stdio: "ignore", env: process.env },
     );
     child.on("error", reject);
     child.on("exit", (code) => {
