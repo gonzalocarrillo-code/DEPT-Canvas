@@ -12,6 +12,7 @@ import {
 import { useShallow } from "zustand/react/shallow";
 import { Plus } from "lucide-react";
 import { useGraphStore } from "./store";
+import { useGraphShortcuts } from "./useGraphShortcuts";
 import { nodeTypes } from "./nodes";
 import { kindInfo, type NodeKind } from "./types";
 
@@ -76,6 +77,7 @@ function Flow({ projectId }: { projectId: string }) {
     })),
   );
   const loadProject = useGraphStore((s) => s.loadProject);
+  useGraphShortcuts();
   const didFit = useRef(false);
 
   useEffect(() => {
@@ -105,7 +107,14 @@ function Flow({ projectId }: { projectId: string }) {
       snapGrid={[20, 20]}
       minZoom={0.3}
       maxZoom={1.5}
-      deleteKeyCode={null}
+      deleteKeyCode={["Backspace", "Delete"]}
+      onBeforeDelete={async ({ nodes: delNodes, edges: delEdges }) => {
+        // Brand-locked nodes can't be deleted; snapshot first so delete is undoable.
+        const allowed = delNodes.filter((n) => !n.data?.locked);
+        if (!allowed.length && !delEdges.length) return false;
+        useGraphStore.getState().pushHistory();
+        return { nodes: allowed, edges: delEdges };
+      }}
       defaultEdgeOptions={{ type: "smoothstep" }}
       proOptions={{ hideAttribution: true }}
     >

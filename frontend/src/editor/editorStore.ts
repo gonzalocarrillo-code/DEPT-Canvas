@@ -38,6 +38,12 @@ interface SceneSnapshot {
   layers: Layer[];
   keyframes: Record<string, LayerKeyframes>;
 }
+interface HistSnap {
+  layers: Layer[];
+  keyframes: Record<string, LayerKeyframes>;
+  selectedId: string | null;
+}
+const HISTORY_LIMIT = 80;
 export interface SceneSeed {
   title?: string;
   locked?: boolean;
@@ -62,6 +68,13 @@ interface EditorState {
   clipboard: Clipboard | null;
   kfClipboard: { prop: AnimatableProp; value: number; ease: string } | null;
   lastCopied: "layer" | "keyframe" | null;
+  past: HistSnap[];
+  future: HistSnap[];
+  histTag: string | null;
+  snap: (tag?: string) => void;
+  endInteraction: () => void;
+  undo: () => void;
+  redo: () => void;
   load: (sceneId: string, seed?: SceneSeed) => void;
   setMode: (mode: EditorMode) => void;
   setFormat: (format: FormatId) => void;
@@ -122,6 +135,50 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   clipboard: null,
   kfClipboard: null,
   lastCopied: null,
+  past: [],
+  future: [],
+  histTag: null,
+  // Snapshot the pre-mutation scene for undo. Immutable updates mean we can store
+  // references cheaply. A `tag` coalesces a burst of same-kind edits (drag, slider,
+  // typing) into a single undo step; endInteraction() ends the burst.
+  snap: (tag) => {
+    const s = get();
+    if (tag && tag === s.histTag) return;
+    set({
+      past: [...s.past.slice(-(HISTORY_LIMIT - 1)), { layers: s.layers, keyframes: s.keyframes, selectedId: s.selectedId }],
+      future: [],
+      histTag: tag ?? null,
+    });
+  },
+  endInteraction: () => set({ histTag: null }),
+  undo: () => {
+    const s = get();
+    if (!s.past.length) return;
+    const prev = s.past[s.past.length - 1];
+    set({
+      past: s.past.slice(0, -1),
+      future: [...s.future, { layers: s.layers, keyframes: s.keyframes, selectedId: s.selectedId }],
+      layers: prev.layers,
+      keyframes: prev.keyframes,
+      selectedId: prev.selectedId,
+      selectedKeyframe: null,
+      histTag: null,
+    });
+  },
+  redo: () => {
+    const s = get();
+    if (!s.future.length) return;
+    const next = s.future[s.future.length - 1];
+    set({
+      future: s.future.slice(0, -1),
+      past: [...s.past, { layers: s.layers, keyframes: s.keyframes, selectedId: s.selectedId }],
+      layers: next.layers,
+      keyframes: next.keyframes,
+      selectedId: next.selectedId,
+      selectedKeyframe: null,
+      histTag: null,
+    });
+  },
   load: (sceneId, seed) => {
     const s = get();
     if (s.sceneId === sceneId) {
@@ -146,6 +203,9 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
         sceneTitle: seed?.title ?? s.sceneTitle,
         sceneLocked: locked,
         mode: seed?.mode ?? s.mode,
+        past: [],
+        future: [],
+        histTag: null,
       });
     } else {
       const layers = locked ? sampleScene().map((l) => ({ ...l, locked: true })) : sampleScene();
@@ -161,19 +221,29 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
         sceneTitle: seed?.title ?? "Untitled scene",
         sceneLocked: locked,
         mode: seed?.mode ?? "design",
+        past: [],
+        future: [],
+        histTag: null,
       });
     }
   },
   setMode: (mode) => set({ mode }),
   setFormat: (format) => set({ format }),
-  select: (selectedId) => set({ selectedId, selectedKeyframe: null }),
-  updateLayer: (id, patch) =>
-    set({ layers: get().layers.map((l) => (l.id === id ? { ...l, ...patch } : l)) }),
-  toggleVisible: (id) =>
-    set({ layers: get().layers.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l)) }),
-  toggleLock: (id) =>
-    set({ layers: get().layers.map((l) => (l.id === id ? { ...l, locked: !l.locked } : l)) }),
+  select: (selectedId) => set({ selectedId, selectedKeyframe: null, histTag: null }),
+  updateLayer: (id, patch) => {
+    get().snap(`update:${id}`);
+    set({ layers: get().layers.map((l) => (l.id === id ? { ...l, ...patch } : l)) });
+  },
+  toggleVisible: (id) => {
+    get().snap();
+    set({ layers: get().layers.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l)) });
+  },
+  toggleLock: (id) => {
+    get().snap();
+    set({ layers: get().layers.map((l) => (l.id === id ? { ...l, locked: !l.locked } : l)) });
+  },
   addLayer: (kind) => {
+    get().snap();
     const id = `${kind}-${makeId()}`;
     const common = { id, x: 0.3, y: 0.4, w: 0.4, h: 0.18, rotation: 0, opacity: 1, visible: true, locked: false };
     let layer: Layer;
@@ -187,6 +257,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     set({ layers: [...get().layers, layer], selectedId: id, selectedKeyframe: null });
   },
   addShape: (shapeType) => {
+    get().snap();
     const id = `shape-${makeId()}`;
     const labels: Record<ShapeType, string> = {
       rect: "Rectangle",
@@ -218,7 +289,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     };
     set({ layers: [...get().layers, layer], selectedId: id, selectedKeyframe: null });
   },
-  reorderLayer: (id, dir) =>
+  reorderLayer: (id, dir) => {
+    get().snap();
     set((s) => {
       const i = s.layers.findIndex((l) => l.id === id);
       if (i < 0) return {};
@@ -231,8 +303,10 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       else j = Math.max(0, i - 1);
       arr.splice(j, 0, item);
       return { layers: arr };
-    }),
-  deleteLayer: (id) =>
+    });
+  },
+  deleteLayer: (id) => {
+    get().snap();
     set((s) => {
       const kf = { ...s.keyframes };
       delete kf[id];
@@ -242,10 +316,12 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
         selectedId: s.selectedId === id ? null : s.selectedId,
         selectedKeyframe: s.selectedId === id ? null : s.selectedKeyframe,
       };
-    }),
+    });
+  },
   duplicateLayer: (id) => {
     const l = get().layers.find((x) => x.id === id);
     if (!l) return;
+    get().snap();
     const nid = `${l.kind}-${makeId()}`;
     const layer: Layer = { ...l, id: nid, name: `${l.name} copy`, x: clamp01ish(l.x + 0.03), y: clamp01ish(l.y + 0.03) };
     const srcKf = get().keyframes[id];
@@ -268,6 +344,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   pasteLayer: () => {
     const c = get().clipboard;
     if (!c) return;
+    get().snap();
     const nid = `${c.layer.kind}-${makeId()}`;
     const layer: Layer = { ...c.layer, id: nid, name: `${c.layer.name} copy`, x: clamp01ish(c.layer.x + 0.03), y: clamp01ish(c.layer.y + 0.03) };
     set((s) => ({
@@ -279,7 +356,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   },
   setPlayhead: (playhead) => set({ playhead }),
   setPlaying: (playing) => set({ playing }),
-  setKeyframe: (id, prop, t, value) =>
+  setKeyframe: (id, prop, t, value) => {
+    get().snap(`kf-set:${id}:${prop}:${t.toFixed(2)}`);
     set((s) => {
       const lk: LayerKeyframes = { ...(s.keyframes[id] ?? {}) };
       const arr = [...(lk[prop] ?? [])];
@@ -289,16 +367,20 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       arr.sort((a, b) => a.t - b.t);
       lk[prop] = arr;
       return { keyframes: { ...s.keyframes, [id]: lk } };
-    }),
-  removeKeyframe: (id, prop, t) =>
+    });
+  },
+  removeKeyframe: (id, prop, t) => {
+    get().snap();
     set((s) => {
       const lk: LayerKeyframes = { ...(s.keyframes[id] ?? {}) };
       const arr = (lk[prop] ?? []).filter((k) => Math.abs(k.t - t) >= EPS);
       if (arr.length) lk[prop] = arr;
       else delete lk[prop];
       return { keyframes: { ...s.keyframes, [id]: lk } };
-    }),
-  moveKeyframe: (id, prop, fromT, toT) =>
+    });
+  },
+  moveKeyframe: (id, prop, fromT, toT) => {
+    get().snap(`kf-move:${id}:${prop}`);
     set((s) => {
       const lk: LayerKeyframes = { ...(s.keyframes[id] ?? {}) };
       const arr = (lk[prop] ?? []).map((k) => (Math.abs(k.t - fromT) < EPS ? { ...k, t: toT } : k));
@@ -309,13 +391,16 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
         keyframes: { ...s.keyframes, [id]: lk },
         selectedKeyframe: sk && sk.prop === prop && Math.abs(sk.t - fromT) < EPS ? { prop, t: toT } : sk,
       };
-    }),
-  setKeyframeEase: (id, prop, t, ease) =>
+    });
+  },
+  setKeyframeEase: (id, prop, t, ease) => {
+    get().snap(`kf-ease:${id}:${prop}:${t.toFixed(2)}`);
     set((s) => {
       const lk: LayerKeyframes = { ...(s.keyframes[id] ?? {}) };
       lk[prop] = (lk[prop] ?? []).map((k) => (Math.abs(k.t - t) < EPS ? { ...k, ease } : k));
       return { keyframes: { ...s.keyframes, [id]: lk } };
-    }),
+    });
+  },
   selectKeyframe: (selectedKeyframe) => set({ selectedKeyframe }),
   deleteSelectedKeyframe: () => {
     const { selectedId, selectedKeyframe } = get();
@@ -334,6 +419,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   pasteKeyframe: () => {
     const { kfClipboard, selectedId, playhead } = get();
     if (!kfClipboard || !selectedId) return;
+    get().snap();
     set((s) => {
       const lk: LayerKeyframes = { ...(s.keyframes[selectedId] ?? {}) };
       const arr = [...(lk[kfClipboard.prop] ?? [])];
@@ -349,17 +435,21 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   applyPreset: (id, presetId) => {
     const kf = buildPreset(presetId, get().durationS);
     if (!kf) return;
+    get().snap();
     set((s) => ({ keyframes: { ...s.keyframes, [id]: kf } }));
   },
-  clearKeyframes: (id) =>
+  clearKeyframes: (id) => {
+    get().snap();
     set((s) => {
       const next = { ...s.keyframes };
       delete next[id];
       return { keyframes: next, selectedKeyframe: null };
-    }),
+    });
+  },
   addEffect: (id, type) => {
     const def = EFFECT_CATALOG.find((d) => d.type === type);
     if (!def) return;
+    get().snap();
     const params: Record<string, number> = {};
     def.params.forEach((p) => (params[p.key] = p.default));
     const eff: EffectInstance = {
@@ -372,24 +462,32 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     };
     set((s) => ({ layers: mapEffects(s.layers, id, (fx) => [...fx, eff]) }));
   },
-  removeEffect: (id, fxId) =>
-    set((s) => ({ layers: mapEffects(s.layers, id, (fx) => fx.filter((e) => e.id !== fxId)) })),
-  updateEffectParam: (id, fxId, key, value) =>
+  removeEffect: (id, fxId) => {
+    get().snap();
+    set((s) => ({ layers: mapEffects(s.layers, id, (fx) => fx.filter((e) => e.id !== fxId)) }));
+  },
+  updateEffectParam: (id, fxId, key, value) => {
+    get().snap(`fx:${fxId}:${key}`);
     set((s) => ({
       layers: mapEffects(s.layers, id, (fx) =>
         fx.map((e) => (e.id === fxId ? { ...e, params: { ...e.params, [key]: value } } : e)),
       ),
-    })),
-  updateEffectColor: (id, fxId, which, color) =>
+    }));
+  },
+  updateEffectColor: (id, fxId, which, color) => {
+    get().snap(`fxc:${fxId}:${which}`);
     set((s) => ({
       layers: mapEffects(s.layers, id, (fx) =>
         fx.map((e) => (e.id === fxId ? { ...e, [which]: color } : e)),
       ),
-    })),
-  toggleEffect: (id, fxId) =>
+    }));
+  },
+  toggleEffect: (id, fxId) => {
+    get().snap();
     set((s) => ({
       layers: mapEffects(s.layers, id, (fx) =>
         fx.map((e) => (e.id === fxId ? { ...e, enabled: !e.enabled } : e)),
       ),
-    })),
+    }));
+  },
 }));

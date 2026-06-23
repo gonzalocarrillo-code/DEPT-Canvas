@@ -12,11 +12,18 @@ const baseItems: { kind: LayerKind; label: string; icon: typeof Type }[] = [
 ];
 
 export function EditorToolbar() {
-  const { mode, format } = useEditorStore(
-    useShallow((s) => ({ mode: s.mode, format: s.format })),
+  const { mode, format, canUndo, canRedo } = useEditorStore(
+    useShallow((s) => ({
+      mode: s.mode,
+      format: s.format,
+      canUndo: s.past.length > 0,
+      canRedo: s.future.length > 0,
+    })),
   );
   const setMode = useEditorStore((s) => s.setMode);
   const setFormat = useEditorStore((s) => s.setFormat);
+  const undo = useEditorStore((s) => s.undo);
+  const redo = useEditorStore((s) => s.redo);
   const navigate = useNavigate();
   const { projectId } = useParams();
   const addLayer = useEditorStore((s) => s.addLayer);
@@ -115,10 +122,20 @@ export function EditorToolbar() {
       </div>
 
       <div className="flex items-center gap-1">
-        <button className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent" title="Undo">
+        <button
+          onClick={undo}
+          disabled={!canUndo}
+          className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:hover:bg-transparent"
+          title="Undo (⌘Z)"
+        >
           <Undo2 className="size-4" />
         </button>
-        <button className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent" title="Redo">
+        <button
+          onClick={redo}
+          disabled={!canRedo}
+          className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:hover:bg-transparent"
+          title="Redo (⌘⇧Z)"
+        >
           <Redo2 className="size-4" />
         </button>
         <div className="mx-1 h-5 w-px bg-border" />

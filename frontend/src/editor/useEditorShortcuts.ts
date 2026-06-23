@@ -26,6 +26,17 @@ export function useEditorShortcuts() {
       }
       if (!mod) return;
 
+      if (key === "z") {
+        e.preventDefault();
+        if (e.shiftKey) s.redo();
+        else s.undo();
+        return;
+      }
+      if (key === "y") {
+        e.preventDefault();
+        s.redo();
+        return;
+      }
       if (key === "c") {
         if (s.selectedKeyframe) s.copyKeyframe();
         else if (s.selectedId) s.copyLayer(s.selectedId);

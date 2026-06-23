@@ -73,7 +73,11 @@ function LayerView({
   playing,
   kf,
   playhead,
+  editing,
   onPointerDown,
+  onStartEdit,
+  onText,
+  onEndEdit,
 }: {
   layer: Layer;
   selected: boolean;
@@ -81,7 +85,11 @@ function LayerView({
   playing: boolean;
   kf: LayerKeyframes | undefined;
   playhead: number;
+  editing: boolean;
   onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
+  onStartEdit: () => void;
+  onText: (t: string) => void;
+  onEndEdit: () => void;
 }) {
   const anim = animate ? animatedStyle(kf, playhead) : {};
   const draggable = !animate && !layer.locked;
@@ -115,6 +123,7 @@ function LayerView({
     <div
       style={box}
       onPointerDown={onPointerDown}
+      onDoubleClick={layer.kind === "text" && !animate && !layer.locked ? onStartEdit : undefined}
       className={cn(
         selected && !playing && "outline outline-2 outline-offset-2 outline-primary",
       )}
@@ -157,22 +166,50 @@ function LayerView({
           )}
         </div>
       )}
-      {layer.kind === "text" && (
-        <div
-          style={{
-            color: layer.color,
-            fontSize: `${(layer.fontSize ?? 0.05) * 100}cqw`,
-            fontWeight: layer.fontWeight,
-            textAlign: layer.align,
-            lineHeight: layer.lineHeight,
-            letterSpacing: `${layer.letterSpacing ?? 0}em`,
-            fontFamily: layer.fontFamily,
-            whiteSpace: "pre-line",
-          }}
-        >
-          {layer.text}
-        </div>
-      )}
+      {layer.kind === "text" &&
+        (editing ? (
+          <textarea
+            autoFocus
+            value={layer.text ?? ""}
+            onChange={(e) => onText(e.target.value)}
+            onBlur={onEndEdit}
+            onPointerDown={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                onEndEdit();
+              }
+              e.stopPropagation();
+            }}
+            className="h-full w-full resize-none border-0 bg-transparent p-0 outline-none ring-1 ring-primary/60"
+            style={{
+              color: layer.color,
+              fontSize: `${(layer.fontSize ?? 0.05) * 100}cqw`,
+              fontWeight: layer.fontWeight,
+              textAlign: layer.align,
+              lineHeight: layer.lineHeight,
+              letterSpacing: `${layer.letterSpacing ?? 0}em`,
+              fontFamily: layer.fontFamily,
+              caretColor: layer.color,
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              color: layer.color,
+              fontSize: `${(layer.fontSize ?? 0.05) * 100}cqw`,
+              fontWeight: layer.fontWeight,
+              textAlign: layer.align,
+              lineHeight: layer.lineHeight,
+              letterSpacing: `${layer.letterSpacing ?? 0}em`,
+              fontFamily: layer.fontFamily,
+              whiteSpace: "pre-line",
+            }}
+          >
+            {layer.text}
+          </div>
+        ))}
       {composed.vignette && (
         <div
           className="pointer-events-none absolute inset-0"
@@ -204,9 +241,11 @@ export function CanvasStage() {
   );
   const select = useEditorStore((s) => s.select);
   const updateLayer = useEditorStore((s) => s.updateLayer);
+  const endInteraction = useEditorStore((s) => s.endInteraction);
   const { containerRef, status } = useCesdkEditor();
   const artRef = useRef<HTMLDivElement>(null);
   const [guides, setGuides] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] });
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const fmt = FORMATS[format];
   const ratio = fmt.w / fmt.h;
@@ -215,7 +254,8 @@ export function CanvasStage() {
 
   const startDrag = (layer: Layer, e: ReactPointerEvent<HTMLDivElement>) => {
     select(layer.id);
-    if (animate || layer.locked) return;
+    if (editingId && editingId !== layer.id) setEditingId(null);
+    if (animate || layer.locked || editingId === layer.id) return;
     const art = artRef.current;
     if (!art) return;
     const rect = art.getBoundingClientRect();
@@ -251,6 +291,7 @@ export function CanvasStage() {
     };
     const up = () => {
       setGuides({ x: [], y: [] });
+      endInteraction();
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
     };
@@ -267,7 +308,10 @@ export function CanvasStage() {
           className="editor-artboard relative overflow-hidden bg-black shadow-2xl ring-1 ring-white/5"
           style={{ width: `min(88cqw, calc(${ratio} * 88cqh))`, aspectRatio: `${fmt.w} / ${fmt.h}` }}
           onPointerDown={(e) => {
-            if (e.target === e.currentTarget) select(null);
+            if (e.target === e.currentTarget) {
+              select(null);
+              setEditingId(null);
+            }
           }}
         >
           {layers
@@ -281,7 +325,17 @@ export function CanvasStage() {
                 playing={playing}
                 kf={keyframes[l.id]}
                 playhead={playhead}
+                editing={editingId === l.id}
                 onPointerDown={(e) => startDrag(l, e)}
+                onStartEdit={() => {
+                  select(l.id);
+                  setEditingId(l.id);
+                }}
+                onText={(t) => updateLayer(l.id, { text: t })}
+                onEndEdit={() => {
+                  setEditingId(null);
+                  endInteraction();
+                }}
               />
             ))}
 
@@ -309,7 +363,7 @@ export function CanvasStage() {
             ? "Loading CE.SDK engine…"
             : animate
               ? "Scrub or play to preview · keyframe craft (Tier-2 · Remotion render)"
-              : "Drag layers to move · smart-snaps to edges & centers"}
+              : "Drag to move · double-click text to edit · ⌘Z undo"}
       </div>
     </div>
   );

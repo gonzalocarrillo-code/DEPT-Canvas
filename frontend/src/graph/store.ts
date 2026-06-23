@@ -21,6 +21,12 @@ function makeId(): string {
 
 const countedKinds = new Set<NodeKind>(["transcreate", "resize", "copy"]);
 
+const HISTORY_LIMIT = 50;
+type GraphSnap = { nodes: CanvasNode[]; edges: CanvasEdge[] };
+const cloneNodes = (ns: CanvasNode[]): CanvasNode[] =>
+  ns.map((n) => ({ ...n, position: { ...n.position }, data: { ...n.data } }));
+const cloneEdges = (es: CanvasEdge[]): CanvasEdge[] => es.map((e) => ({ ...e }));
+
 interface PlanInput {
   master: { title: string; prompt: string };
   nodes: { kind: string; title: string; prompt: string }[];
@@ -30,6 +36,9 @@ interface GraphState {
   projectId: string | null;
   nodes: CanvasNode[];
   edges: CanvasEdge[];
+  past: GraphSnap[];
+  future: GraphSnap[];
+  clipboard: CanvasNode[];
   loadProject: (projectId: string) => void;
   onNodesChange: (changes: NodeChange<CanvasNode>[]) => void;
   onEdgesChange: (changes: EdgeChange<CanvasEdge>[]) => void;
@@ -38,24 +47,98 @@ interface GraphState {
   addChild: (parentId: string, kind: NodeKind) => void;
   addNode: (kind: NodeKind) => void;
   buildFromPlan: (projectId: string, plan: PlanInput) => void;
+  pushHistory: () => void;
+  undo: () => void;
+  redo: () => void;
+  copyNodes: () => void;
+  pasteNodes: () => void;
 }
 
 // React Flow's recommended state-management pattern: the store is the single source
 // of truth; ReactFlow is driven by it, and node components mutate it directly.
-export const useGraphStore = create<GraphState>()((set, get) => ({
+export const useGraphStore = create<GraphState>()((set, get) => {
+  // Captured at drag-start so an entire node drag collapses into one undo step.
+  let dragSnap: GraphSnap | null = null;
+  const snapshot = (): GraphSnap => ({ nodes: cloneNodes(get().nodes), edges: cloneEdges(get().edges) });
+  const commit = (snap: GraphSnap) =>
+    set((s) => ({ past: [...s.past.slice(-(HISTORY_LIMIT - 1)), snap], future: [] }));
+
+  return {
   projectId: null,
   nodes: [],
   edges: [],
+  past: [],
+  future: [],
+  clipboard: [],
   loadProject: (projectId) => {
     if (get().projectId === projectId && get().nodes.length > 0) return;
     const seeded = seedGraph(projectId);
-    set({ projectId, nodes: seeded.nodes, edges: seeded.edges });
+    set({ projectId, nodes: seeded.nodes, edges: seeded.edges, past: [], future: [], clipboard: [] });
   },
-  onNodesChange: (changes) =>
-    set({ nodes: applyNodeChanges(changes, get().nodes) }),
+  onNodesChange: (changes) => {
+    const dragStart = changes.some((c) => c.type === "position" && c.dragging === true);
+    const dragEnd = changes.some((c) => c.type === "position" && c.dragging === false);
+    if (dragStart && !dragSnap) dragSnap = snapshot();
+    set({ nodes: applyNodeChanges(changes, get().nodes) });
+    if (dragEnd && dragSnap) {
+      const snap = dragSnap;
+      dragSnap = null;
+      commit(snap);
+    }
+  },
   onEdgesChange: (changes) =>
     set({ edges: applyEdgeChanges(changes, get().edges) }),
-  onConnect: (connection) => set({ edges: addEdge(connection, get().edges) }),
+  onConnect: (connection) => {
+    commit(snapshot());
+    set({ edges: addEdge(connection, get().edges) });
+  },
+  pushHistory: () => commit(snapshot()),
+  undo: () => {
+    const s = get();
+    if (!s.past.length) return;
+    const prev = s.past[s.past.length - 1];
+    set({
+      past: s.past.slice(0, -1),
+      future: [...s.future, snapshot()],
+      nodes: prev.nodes,
+      edges: prev.edges,
+    });
+  },
+  redo: () => {
+    const s = get();
+    if (!s.future.length) return;
+    const next = s.future[s.future.length - 1];
+    set({
+      future: s.future.slice(0, -1),
+      past: [...s.past, snapshot()],
+      nodes: next.nodes,
+      edges: next.edges,
+    });
+  },
+  copyNodes: () => {
+    const selected = get().nodes.filter((n) => n.selected);
+    if (selected.length) set({ clipboard: cloneNodes(selected) });
+  },
+  pasteNodes: () => {
+    const clip = get().clipboard;
+    if (!clip.length) return;
+    commit(snapshot());
+    const idMap = new Map<string, string>();
+    const pasted: CanvasNode[] = clip.map((n) => {
+      const id = `${n.data.kind}-${makeId()}`;
+      idMap.set(n.id, id);
+      return {
+        ...n,
+        id,
+        position: { x: n.position.x + 40, y: n.position.y + 40 },
+        selected: true,
+        data: { ...n.data },
+      };
+    });
+    set((s) => ({
+      nodes: [...s.nodes.map((n) => ({ ...n, selected: false })), ...pasted],
+    }));
+  },
   updateNodeData: (id, patch) =>
     set({
       nodes: get().nodes.map((n) =>
@@ -63,6 +146,7 @@ export const useGraphStore = create<GraphState>()((set, get) => ({
       ),
     }),
   addChild: (parentId, kind) => {
+    commit(snapshot());
     const parent = get().nodes.find((n) => n.id === parentId);
     const siblings = get().edges.filter((e) => e.source === parentId).length;
     const px = parent?.position.x ?? 0;
@@ -97,6 +181,7 @@ export const useGraphStore = create<GraphState>()((set, get) => ({
     }, 1500);
   },
   addNode: (kind) => {
+    commit(snapshot());
     const count = get().nodes.length;
     const id = `${kind}-${makeId()}`;
     const node: CanvasNode = {
@@ -165,6 +250,7 @@ export const useGraphStore = create<GraphState>()((set, get) => ({
       });
       edges.push({ id: `e-master-${id}`, source: "master", target: id });
     });
-    set({ projectId, nodes, edges });
+    set({ projectId, nodes, edges, past: [], future: [], clipboard: [] });
   },
-}));
+  };
+});
