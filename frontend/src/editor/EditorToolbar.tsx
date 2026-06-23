@@ -232,7 +232,8 @@ export function EditorToolbar() {
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => navigate(`/project/${projectId ?? "demo"}/batch`)}
+          onClick={() => navigate(`/project/${projectId ?? "demo"}/graph`)}
+          title="Fan out variations on the graph"
         >
           <Boxes className="size-3.5" /> Variations
         </Button>

@@ -1,5 +1,5 @@
 import { NavLink, useParams } from "react-router";
-import { LayoutGrid, Plus, Workflow, Film, Boxes, BookOpen, Settings } from "lucide-react";
+import { LayoutGrid, Plus, Workflow, Film, BookOpen, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -37,13 +37,6 @@ export function IconRail() {
             className={linkClass}
           >
             <Film className="size-[18px]" />
-          </NavLink>
-          <NavLink
-            to={`/project/${projectId}/batch`}
-            title="Variation studio"
-            className={linkClass}
-          >
-            <Boxes className="size-[18px]" />
           </NavLink>
         </>
       )}

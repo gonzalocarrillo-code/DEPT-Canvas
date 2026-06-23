@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
-import { Hexagon, Play, Share2, Moon, Sun, ChevronRight } from "lucide-react";
+import { Hexagon, Share2, Moon, Sun, ChevronRight } from "lucide-react";
 import { Button } from "@/ui/button";
 import { Kbd } from "@/ui/kbd";
 import { useProjectsStore } from "@/store/projectsStore";
@@ -89,15 +89,6 @@ export function TopBar() {
         {inProject && (
           <Button variant="ghost" size="sm">
             <Share2 /> Share
-          </Button>
-        )}
-        {inProject && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => navigate(`/project/${projectId}/batch`)}
-          >
-            <Play /> Run
           </Button>
         )}
         <Button

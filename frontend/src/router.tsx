@@ -11,7 +11,6 @@ const NewProject = lazy(() => import("@/routes/NewProject").then((m) => ({ defau
 const BriefComposer = lazy(() => import("@/routes/BriefComposer").then((m) => ({ default: m.BriefComposer })));
 const GraphPage = lazy(() => import("@/routes/GraphPage").then((m) => ({ default: m.GraphPage })));
 const EditorPage = lazy(() => import("@/routes/EditorPage").then((m) => ({ default: m.EditorPage })));
-const VariationStudio = lazy(() => import("@/batch/VariationStudio").then((m) => ({ default: m.VariationStudio })));
 const SkillsLibrary = lazy(() => import("@/skills/SkillsLibrary").then((m) => ({ default: m.SkillsLibrary })));
 const ProfileScreen = lazy(() => import("@/account/ProfileScreen").then((m) => ({ default: m.ProfileScreen })));
 const AdminScreen = lazy(() => import("@/admin/AdminScreen").then((m) => ({ default: m.AdminScreen })));
@@ -34,7 +33,6 @@ export const router = createBrowserRouter([
       { path: "project/:projectId/graph", element: <GraphPage /> },
       { path: "project/:projectId/editor", element: <EditorPage /> },
       { path: "project/:projectId/editor/:sceneId", element: <EditorPage /> },
-      { path: "project/:projectId/batch", element: <VariationStudio /> },
       { path: "*", element: <NotFound /> },
     ],
   },
