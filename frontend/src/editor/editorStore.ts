@@ -13,6 +13,7 @@ import type {
 import { EFFECT_CATALOG } from "./types";
 import { sampleScene } from "./scene";
 import { buildPreset } from "./motionPresets";
+import { useGraphStore } from "../graph/store";
 
 function makeId(): string {
   try {
@@ -71,6 +72,7 @@ interface EditorState {
   past: HistSnap[];
   future: HistSnap[];
   histTag: string | null;
+  dirty: boolean;
   snap: (tag?: string) => void;
   endInteraction: () => void;
   undo: () => void;
@@ -138,6 +140,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   past: [],
   future: [],
   histTag: null,
+  dirty: false,
   // Snapshot the pre-mutation scene for undo. Immutable updates mean we can store
   // references cheaply. A `tag` coalesces a burst of same-kind edits (drag, slider,
   // typing) into a single undo step; endInteraction() ends the burst.
@@ -148,6 +151,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       past: [...s.past.slice(-(HISTORY_LIMIT - 1)), { layers: s.layers, keyframes: s.keyframes, selectedId: s.selectedId }],
       future: [],
       histTag: tag ?? null,
+      dirty: true,
     });
   },
   endInteraction: () => set({ histTag: null }),
@@ -188,6 +192,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     // cache the outgoing scene's edits so switching back restores them
     const cache = { ...s.sceneCache };
     if (s.sceneId) cache[s.sceneId] = { layers: s.layers, keyframes: s.keyframes };
+    // If the outgoing scene was a master with derived variants, flag them stale.
+    if (s.sceneId && s.dirty) useGraphStore.getState().markSetStale(s.sceneId);
     const locked = Boolean(seed?.locked);
     const cached = cache[sceneId];
     if (cached) {
@@ -206,6 +212,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
         past: [],
         future: [],
         histTag: null,
+        dirty: false,
       });
     } else {
       const layers = locked ? sampleScene().map((l) => ({ ...l, locked: true })) : sampleScene();
@@ -224,6 +231,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
         past: [],
         future: [],
         histTag: null,
+        dirty: false,
       });
     }
   },

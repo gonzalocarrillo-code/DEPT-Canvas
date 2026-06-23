@@ -104,4 +104,36 @@ describe("graph-native variations — createVariationSet", () => {
     useGraphStore.getState().undo();
     expect(useGraphStore.getState().nodes.length).toBe(before);
   });
+
+  it("markSetStale flags variants derived from a re-edited master", () => {
+    useGraphStore.getState().createVariationSet("master", {
+      targetSlotIds: ["background", "headline"],
+      slotInstructions: {},
+      mode: "generate",
+      count: 2,
+      locales: [],
+      skillId: null,
+    });
+    expect(variants().every((v) => !v.data.stale)).toBe(true);
+    useGraphStore.getState().markSetStale("master");
+    expect(variants().every((v) => v.data.stale === true)).toBe(true);
+  });
+
+  it("reDeriveVariant clears stale and re-enters generating", () => {
+    useGraphStore.getState().createVariationSet("master", {
+      targetSlotIds: ["background"],
+      slotInstructions: {},
+      mode: "generate",
+      count: 1,
+      locales: [],
+      skillId: null,
+    });
+    useGraphStore.getState().markSetStale("master");
+    const v = variants()[0];
+    useGraphStore.getState().reDeriveVariant(v.id);
+    const after = variants().find((x) => x.id === v.id);
+    expect(after?.data.stale).toBe(false);
+    expect(after?.data.status).toBe("generating");
+    expect(after?.data.approval).toBe("pending");
+  });
 });

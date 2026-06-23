@@ -213,6 +213,7 @@ function VariantNode({ id, data, selected }: { id: string; data: CanvasNodeData;
   const pid = projectId ?? "demo";
   const approveVariant = useGraphStore((s) => s.approveVariant);
   const rejectVariant = useGraphStore((s) => s.rejectVariant);
+  const reDeriveVariant = useGraphStore((s) => s.reDeriveVariant);
 
   const hue = data.hue ?? 200;
   const busy = data.status === "generating" || data.status === "queued";
@@ -239,6 +240,9 @@ function VariantNode({ id, data, selected }: { id: string; data: CanvasNodeData;
             : `radial-gradient(130% 130% at 0% 0%, hsl(${hue} 55% 28%), hsl(${hue} 45% 10%))`,
         }}
       >
+        {data.imageUrl && (
+          <img src={data.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        )}
         <div
           className="absolute inset-0 opacity-60"
           style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)", backgroundSize: "13px 13px" }}
@@ -287,6 +291,15 @@ function VariantNode({ id, data, selected }: { id: string; data: CanvasNodeData;
         >
           <Download className="size-3" />
         </button>
+        {data.stale && !busy && (
+          <button
+            onClick={() => reDeriveVariant(id)}
+            title="Re-derive from the updated master"
+            className="nodrag grid size-6 place-items-center rounded text-lock hover:bg-accent"
+          >
+            <RefreshCw className="size-3" />
+          </button>
+        )}
         {!busy && (
           <div className="ml-auto flex items-center gap-0.5">
             <button

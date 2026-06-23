@@ -26,6 +26,15 @@ export function EditorScreen() {
     if (projectId) loadGraph(projectId);
   }, [projectId, loadGraph]);
 
+  // Leaving the editor with unsaved master edits flags dependent variants stale.
+  useEffect(
+    () => () => {
+      const s = useEditorStore.getState();
+      if (s.dirty && s.sceneId) useGraphStore.getState().markSetStale(s.sceneId);
+    },
+    [],
+  );
+
   // Connect to the graph: the editor edits the scene behind the opened node.
   useEffect(() => {
     const id = sceneId ?? "scene";

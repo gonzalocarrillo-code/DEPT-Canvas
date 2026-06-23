@@ -41,6 +41,8 @@ export interface CanvasNodeData {
   delta?: string;
   approval?: VariantApproval;
   variantText?: string;
+  /** Real generated image (data URL or remote URL) when the AI gateway is configured. */
+  imageUrl?: string;
   /** Master was re-edited after this variant was derived. */
   stale?: boolean;
   // React Flow node data must be index-compatible.

@@ -11,6 +11,8 @@ import type { CanvasNode, CanvasEdge, CanvasNodeData, NodeKind } from "./types";
 import { kindInfo } from "./types";
 import { seedGraph } from "./seed";
 import { MASTER_SLOTS, hueFor, fakeText, type AssetSlot } from "../batch/batchStore";
+import { getAiStatus, requestGenerate } from "../api/ai";
+import { useSkillsStore } from "../skills/skills";
 
 export interface VariationConfig {
   targetSlotIds: string[];
@@ -19,6 +21,26 @@ export interface VariationConfig {
   count: number;
   locales: string[];
   skillId: string | null;
+}
+
+// Build the generation prompt for one variant. The MD skill body is injected for
+// this asset only (scopes the AI per the skill), matching the variation contract.
+function buildVariantPrompt(
+  slot: AssetSlot,
+  instr: string,
+  locale: string | undefined,
+  skillBody?: string,
+): { kind: string; prompt: string } {
+  const base =
+    slot.type === "image"
+      ? `On-brand ${slot.name.toLowerCase()} for an ad creative. ${instr || slot.hint}.`
+      : `Write the ${slot.name.toLowerCase()} for an ad creative. ${instr || ""}`.trim();
+  const loc = locale
+    ? ` Target locale: ${locale}; transcreate (preserve intent and CTA energy, do not translate literally).`
+    : "";
+  const skillText = skillBody ? `\n\n--- Apply this skill (for this asset only) ---\n${skillBody}` : "";
+  const kind = slot.type === "text" ? (locale ? "transcreate" : "copy") : "image";
+  return { kind, prompt: `${base}${loc}${skillText}` };
 }
 
 function makeId(): string {
@@ -66,6 +88,8 @@ interface GraphState {
   approveVariant: (id: string) => void;
   rejectVariant: (id: string) => void;
   approveAllInSet: (setId: string) => void;
+  markSetStale: (masterId: string) => void;
+  reDeriveVariant: (id: string) => void;
 }
 
 // React Flow's recommended state-management pattern: the store is the single source
@@ -76,6 +100,24 @@ export const useGraphStore = create<GraphState>()((set, get) => {
   const snapshot = (): GraphSnap => ({ nodes: cloneNodes(get().nodes), edges: cloneEdges(get().edges) });
   const commit = (snap: GraphSnap) =>
     set((s) => ({ past: [...s.past.slice(-(HISTORY_LIMIT - 1)), snap], future: [] }));
+
+  // Resolve a variant: call the AI gateway when configured, otherwise keep the
+  // simulated content already on the node. Either way the variant flips to done.
+  const generateInto = (variantId: string, kind: string, prompt: string, configured: boolean, delay: number) => {
+    if (!configured) {
+      window.setTimeout(() => get().updateNodeData(variantId, { status: "done" }), delay);
+      return;
+    }
+    requestGenerate(kind, prompt)
+      .then((r) =>
+        get().updateNodeData(variantId, {
+          status: "done",
+          ...(r.text ? { variantText: r.text } : {}),
+          ...(r.dataUrl || r.url ? { imageUrl: r.dataUrl ?? r.url } : {}),
+        }),
+      )
+      .catch(() => get().updateNodeData(variantId, { status: "done" }));
+  };
 
   return {
   projectId: null,
@@ -193,6 +235,8 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     const COL = 280;
     const ROW = 230;
     const laneBaseY = py - ((slots.length - 1) * ROW) / 2;
+    const skillBody = useSkillsStore.getState().getSkill(config.skillId)?.body;
+    const jobs: { id: string; kind: string; prompt: string }[] = [];
     let gi = 0;
     slots.forEach((slot, lane) => {
       const effMode = slot.type === "text" ? config.mode : "generate";
@@ -205,6 +249,7 @@ export const useGraphStore = create<GraphState>()((set, get) => {
         const locale = effMode === "transcreate" ? (unit as string) : undefined;
         const delta = `${slot.name} · ${locale ?? `v${i + 1}`}`;
         const vid = `variant-${makeId()}`;
+        const { kind, prompt } = buildVariantPrompt(slot, instr, locale, skillBody);
         nodes.push({
           id: vid,
           type: "canvasNode",
@@ -219,21 +264,22 @@ export const useGraphStore = create<GraphState>()((set, get) => {
             slotId: slot.id,
             delta,
             approval: "pending",
+            // Simulated content is the fallback; replaced when the AI gateway is configured.
             variantText: slot.type === "text" ? fakeText(slot, instr, i, locale) : undefined,
           },
         });
         edges.push({ id: `e-${setId}-${vid}`, source: setId, target: vid, label: delta });
+        jobs.push({ id: vid, kind, prompt });
         gi++;
       });
     });
 
     set((s) => ({ nodes: [...s.nodes, ...nodes], edges: [...s.edges, ...edges] }));
-    // Simulate generation: flip each variant generating → done (P4 wires real gen).
-    nodes
-      .filter((n) => n.data.kind === "variant")
-      .forEach((n, idx) =>
-        window.setTimeout(() => get().updateNodeData(n.id, { status: "done" }), 700 + idx * 160),
-      );
+    // Generate through the AI gateway when configured; otherwise keep the simulated
+    // content. One status check, then resolve each variant generating → done.
+    getAiStatus()
+      .then((st) => jobs.forEach((j, idx) => generateInto(j.id, j.kind, j.prompt, st.configured, 700 + idx * 160)))
+      .catch(() => jobs.forEach((j, idx) => generateInto(j.id, j.kind, j.prompt, false, 700 + idx * 160)));
   },
   approveVariant: (id) => get().updateNodeData(id, { approval: "approved" }),
   rejectVariant: (id) => get().updateNodeData(id, { approval: "rejected" }),
@@ -245,6 +291,48 @@ export const useGraphStore = create<GraphState>()((set, get) => {
           : n,
       ),
     })),
+  // The master scene was re-edited: flag dependent variants stale rather than
+  // silently cascading — the human re-derives, preserving edits + locks.
+  markSetStale: (masterId) => {
+    const setIds = get()
+      .edges.filter((e) => e.source === masterId)
+      .map((e) => e.target);
+    const sets = new Set(
+      get().nodes.filter((n) => n.data.kind === "variation-set" && setIds.includes(n.id)).map((n) => n.id),
+    );
+    if (!sets.size) return;
+    set((s) => ({
+      nodes: s.nodes.map((n) =>
+        n.data.kind === "variant" && n.data.setId && sets.has(n.data.setId) && !n.data.stale
+          ? { ...n, data: { ...n.data, stale: true } }
+          : n,
+      ),
+    }));
+  },
+  // Re-run ONLY this variant's varied axis on the current master; clears stale.
+  // Never touches locked props — the variant only ever carries the swapped asset.
+  reDeriveVariant: (id) => {
+    const v = get().nodes.find((n) => n.id === id);
+    if (!v || v.data.kind !== "variant") return;
+    const setNode = get().nodes.find((n) => n.id === v.data.setId);
+    const slot = MASTER_SLOTS.find((s) => s.id === v.data.slotId);
+    if (!setNode || !slot) {
+      get().updateNodeData(id, { stale: false });
+      return;
+    }
+    const cfg = setNode.data;
+    const instr = (cfg.slotInstructions ?? {})[slot.id] ?? "";
+    const locale =
+      cfg.variationMode === "transcreate" && slot.type === "text"
+        ? v.data.delta?.split("·").pop()?.trim()
+        : undefined;
+    const skillBody = useSkillsStore.getState().getSkill(cfg.skillId ?? null)?.body;
+    const { kind, prompt } = buildVariantPrompt(slot, instr, locale, skillBody);
+    get().updateNodeData(id, { status: "generating", stale: false, approval: "pending" });
+    getAiStatus()
+      .then((st) => generateInto(id, kind, prompt, st.configured, 600))
+      .catch(() => generateInto(id, kind, prompt, false, 600));
+  },
   updateNodeData: (id, patch) =>
     set({
       nodes: get().nodes.map((n) =>
