@@ -89,6 +89,17 @@ export const SaveSceneOutput = z.object({
   sceneRef: z.string(),
 });
 
+export const LoadSceneInput = z.object({
+  sceneRef: z.string(),
+});
+
+export const LoadSceneOutput = z.object({
+  sceneRef: z.string(),
+  sceneId: z.string(),
+  scene: z.string(),
+  sizeBytes: z.number(),
+});
+
 export const GenerateAssetInput = z.object({
   jobId: z.string(),
   targetBlockId: z.number().int().optional(),

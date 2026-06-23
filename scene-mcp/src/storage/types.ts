@@ -9,4 +9,10 @@ export interface SceneStorage {
     sceneId: string,
     data: Buffer,
   ): Promise<string>;
+
+  /**
+   * Read scene bytes for a tenant. Throws if the scene is absent.
+   * `tenantId` must come from the verified token — never from tool arguments.
+   */
+  loadScene(tenantId: string, sceneId: string): Promise<Buffer>;
 }

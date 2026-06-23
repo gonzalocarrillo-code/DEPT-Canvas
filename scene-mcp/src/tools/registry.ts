@@ -8,6 +8,7 @@ import { setProperties } from "./set-properties.js";
 import { applyBrandKit } from "./apply-brand-kit.js";
 import { applyLockManifest } from "./apply-lock-manifest.js";
 import { saveScene } from "./save-scene.js";
+import { loadScene } from "./load-scene.js";
 import { generateAsset } from "./generate-asset.js";
 import { generateAssetStandalone } from "./generate-asset-standalone.js";
 import { applyIntent } from "./apply-intent.js";
@@ -24,6 +25,7 @@ import {
   CreateSceneInput,
   GenerateAssetInput,
   GenerateAssetStandaloneInput,
+  LoadSceneInput,
   QueryAnimatableInput,
   RenderVariantInput,
   SaveSceneInput,
@@ -75,6 +77,7 @@ export function buildCoreTools(): ToolRegistration[] {
     wrapTool("apply_brand_kit", ApplyBrandKitInput, applyBrandKit),
     wrapTool("apply_lock_manifest", ApplyLockManifestInput, applyLockManifest),
     wrapTool("save_scene", SaveSceneInput, saveScene),
+    wrapTool("load_scene", LoadSceneInput, loadScene),
     wrapTool("generate_asset", GenerateAssetInput, generateAsset),
     wrapTool("generate_asset_standalone", GenerateAssetStandaloneInput, generateAssetStandalone),
     wrapTool("apply_intent", ApplyIntentInput, applyIntent),

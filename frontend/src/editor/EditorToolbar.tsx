@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useNavigate, useParams } from "react-router";
-import { Undo2, Redo2, Download, Plus, Type, Image as ImageIcon, Shapes, ChevronRight, Boxes } from "lucide-react";
+import { Undo2, Redo2, Download, Plus, Type, Image as ImageIcon, Shapes, ChevronRight, Boxes, Save, Check, Loader2 } from "lucide-react";
 import { Button } from "@/ui/button";
 import { useEditorStore } from "./editorStore";
+import { useGraphStore } from "@/graph/store";
+import { saveScene } from "@/api/ai";
 import { FORMATS, SHAPE_LIBRARY, type EditorMode, type FormatId, type LayerKind } from "./types";
 
 const baseItems: { kind: LayerKind; label: string; icon: typeof Type }[] = [
@@ -24,6 +26,32 @@ export function EditorToolbar() {
   const setFormat = useEditorStore((s) => s.setFormat);
   const undo = useEditorStore((s) => s.undo);
   const redo = useEditorStore((s) => s.redo);
+  const markSaved = useEditorStore((s) => s.markSaved);
+  const markSetStale = useGraphStore((s) => s.markSetStale);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  const onSave = async () => {
+    const s = useEditorStore.getState();
+    if (!s.sceneId) return;
+    setSaveState("saving");
+    try {
+      // Locks are enforced server-side (scene-mcp set_properties). On success,
+      // flag dependent variants stale so they can be re-derived from the master.
+      await saveScene(s.sceneId, {
+        projectId,
+        layers: s.layers,
+        keyframes: s.keyframes,
+        locked: s.sceneLocked,
+      });
+      markSaved();
+      markSetStale(s.sceneId);
+      setSaveState("saved");
+      window.setTimeout(() => setSaveState("idle"), 1500);
+    } catch {
+      setSaveState("error");
+      window.setTimeout(() => setSaveState("idle"), 2500);
+    }
+  };
   const navigate = useNavigate();
   const { projectId } = useParams();
   const addLayer = useEditorStore((s) => s.addLayer);
@@ -139,6 +167,22 @@ export function EditorToolbar() {
           <Redo2 className="size-4" />
         </button>
         <div className="mx-1 h-5 w-px bg-border" />
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onSave}
+          disabled={saveState === "saving"}
+          title="Save edits (locks enforced server-side)"
+        >
+          {saveState === "saving" ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : saveState === "saved" ? (
+            <Check className="size-3.5 text-success" />
+          ) : (
+            <Save className="size-3.5" />
+          )}
+          {saveState === "saved" ? "Saved" : saveState === "error" ? "Retry" : "Save"}
+        </Button>
         <Button
           variant="secondary"
           size="sm"

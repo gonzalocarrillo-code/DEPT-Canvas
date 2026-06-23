@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { SceneStorage } from "./types.js";
 
@@ -19,5 +19,9 @@ export class LocalFsSceneStorage implements SceneStorage {
     await mkdir(tenantDir, { recursive: true });
     await writeFile(this.resolveFilePath(tenantId, sceneId), data);
     return `tenant/${tenantId}/scenes/${sceneId}.scene`;
+  }
+
+  async loadScene(tenantId: string, sceneId: string): Promise<Buffer> {
+    return readFile(this.resolveFilePath(tenantId, sceneId));
   }
 }

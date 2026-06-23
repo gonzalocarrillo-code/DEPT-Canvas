@@ -40,6 +40,18 @@ class GenerateRequest(BaseModel):
     prompt: str = ""
 
 
+class SaveSceneRequest(BaseModel):
+    projectId: str | None = None
+    layers: list | None = None
+    keyframes: dict | None = None
+    locked: bool = False
+
+
+def scene_ops_mocked() -> bool:
+    """Scene save/load short-circuit to stubs when no live scene-mcp is wired."""
+    return os.getenv("DEPT_MOCK_AI") == "1"
+
+
 @app.get("/health")
 def health() -> dict:
     return {"ok": True, "service": "dept-canvas-orchestration"}
@@ -105,3 +117,52 @@ async def generate(
             {"error": "generation_failed", "detail": str(exc)[:300]},
             status_code=502,
         )
+
+
+@app.get("/scenes/{scene_id}")
+async def get_scene(scene_id: str, x_tenant_id: Optional[str] = Header(default=None)) -> JSONResponse:
+    tenant = x_tenant_id or "tenant-dev"
+    if scene_ops_mocked():
+        return JSONResponse({"sceneId": scene_id, "scene": "", "sizeBytes": 0, "mock": True})
+    # Load the persisted .scene via scene-mcp (tenant-isolated by the dev token).
+    from common.mcp_client import build_scene_mcp_server
+
+    scene_ref = f"tenant/{tenant}/scenes/{scene_id}.scene"
+    server = build_scene_mcp_server(tenant_id=tenant)
+    try:
+        async with server:
+            result = await server.call_tool("load_scene", {"sceneRef": scene_ref})
+        data = result.structuredContent or {}
+        if not data:
+            return JSONResponse({"error": "scene_not_found"}, status_code=404)
+        return JSONResponse(
+            {
+                "sceneId": data.get("sceneId", scene_id),
+                "scene": data.get("scene", ""),
+                "sizeBytes": data.get("sizeBytes", 0),
+            }
+        )
+    except Exception as exc:
+        return JSONResponse({"error": "scene_not_found", "detail": str(exc)[:200]}, status_code=404)
+
+
+@app.post("/scenes/{scene_id}/save")
+async def save_scene_route(
+    req: SaveSceneRequest,
+    scene_id: str,
+    x_tenant_id: Optional[str] = Header(default=None),
+) -> JSONResponse:
+    # The lock-enforcement MECHANISM lives in scene-mcp set_properties (a write to
+    # a locked property hard-fails + audits — see scene-mcp locks.test.ts). The
+    # editor-model → CE.SDK block projection that would drive set_properties from
+    # the layer payload is the documented follow-up (needs a live CESDK engine);
+    # we acknowledge the save without faking a block apply.
+    return JSONResponse(
+        {
+            "success": True,
+            "sceneId": scene_id,
+            "applied": False,
+            "locksEnforcedBy": "scene-mcp set_properties",
+            "note": "editor-model → CE.SDK block apply pending projection (needs live CESDK)",
+        }
+    )

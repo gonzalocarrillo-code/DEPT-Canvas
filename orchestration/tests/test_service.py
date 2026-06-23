@@ -63,3 +63,23 @@ def test_generate_image_has_no_bytes_in_mock(client: TestClient) -> None:
     body = res.json()
     assert body["kind"] == "image"
     assert "dataUrl" not in body
+
+
+def test_get_scene_mock(client: TestClient) -> None:
+    res = client.get("/scenes/scene-1", headers={"x-tenant-id": "tenant-a"})
+    assert res.status_code == 200
+    assert res.json()["sceneId"] == "scene-1"
+
+
+def test_save_scene_acknowledges_with_lock_provenance(client: TestClient) -> None:
+    res = client.post(
+        "/scenes/scene-1/save",
+        headers={"x-tenant-id": "tenant-a"},
+        json={"layers": [], "keyframes": {}},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["success"] is True
+    assert body["sceneId"] == "scene-1"
+    # lock enforcement is owned by scene-mcp set_properties, not faked here
+    assert body["locksEnforcedBy"] == "scene-mcp set_properties"

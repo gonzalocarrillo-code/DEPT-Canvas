@@ -37,6 +37,7 @@ export const TOOL_CAPABILITIES: Record<string, Capability> = {
   generate_asset: "scene:write",
   generate_asset_standalone: "scene:write",
   save_scene: "scene:write",
+  load_scene: "scene:read",
   render_variant: "scene:write",
   apply_intent: "scene:write",
   stagger: "scene:write",

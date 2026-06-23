@@ -75,6 +75,7 @@ interface EditorState {
   dirty: boolean;
   snap: (tag?: string) => void;
   endInteraction: () => void;
+  markSaved: () => void;
   undo: () => void;
   redo: () => void;
   load: (sceneId: string, seed?: SceneSeed) => void;
@@ -155,6 +156,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     });
   },
   endInteraction: () => set({ histTag: null }),
+  markSaved: () => set({ dirty: false }),
   undo: () => {
     const s = get();
     if (!s.past.length) return;

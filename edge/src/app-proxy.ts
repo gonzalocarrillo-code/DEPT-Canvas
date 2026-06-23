@@ -102,6 +102,13 @@ export function registerAppRoutes(app: Express): void {
       void forward(req as ProxyRequest, res, route.upstream);
     });
   }
+  // Scene save/load carry a scene id in the path; forward it to orchestration.
+  app.get("/api/scenes/:id", (req, res) => {
+    void forward(req as ProxyRequest, res, `/scenes/${encodeURIComponent(req.params.id)}`);
+  });
+  app.post("/api/scenes/:id/save", (req, res) => {
+    void forward(req as ProxyRequest, res, `/scenes/${encodeURIComponent(req.params.id)}/save`);
+  });
 }
 
 export const APP_ROUTE_PATHS = APP_ROUTES.map((r) => r.path);

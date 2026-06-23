@@ -121,6 +121,37 @@ describe("app-proxy.test.ts — edge → orchestration", () => {
     const res = await request(app).post("/api/ai/plan").send({ brief: "hi" });
     expect(res.status).toBe(401);
   });
+
+  it("forwards scene save/load with the path id and tenant from the token", async () => {
+    process.env.ORCHESTRATION_URL = "http://orchestration.internal:8800";
+    const seen: string[] = [];
+    const realFetch = globalThis.fetch.bind(globalThis);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: unknown, init?: RequestInit) => {
+        if (typeof url === "string" && url.includes("orchestration.internal")) {
+          seen.push(url);
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        return realFetch(url as string, init);
+      }),
+    );
+    const app = createEdgeApp();
+    const auth = await bearerFor({ sub: "u1", tenant_id: "tenant-a", role: "creator" });
+    const get = await request(app).get("/api/scenes/scene-1").set("authorization", auth);
+    const post = await request(app)
+      .post("/api/scenes/scene-1/save")
+      .set("authorization", auth)
+      .send({ layers: [] });
+    expect(get.status).toBe(200);
+    expect(post.status).toBe(200);
+    expect(seen).toContain("http://orchestration.internal:8800/scenes/scene-1");
+    expect(seen).toContain("http://orchestration.internal:8800/scenes/scene-1/save");
+    vi.unstubAllGlobals();
+  });
 });
 
 describe("app-proxy.test.ts — dev auth mode", () => {
