@@ -1,5 +1,5 @@
 import { NavLink, useParams } from "react-router";
-import { LayoutGrid, Plus, Workflow, Film, Boxes, Settings } from "lucide-react";
+import { LayoutGrid, Plus, Workflow, Film, Boxes, BookOpen, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -48,12 +48,17 @@ export function IconRail() {
         </>
       )}
 
-      <button
-        title="Settings"
-        className="mt-auto grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-      >
-        <Settings className="size-[18px]" />
-      </button>
+      <div className="mt-auto flex flex-col items-center gap-1">
+        <NavLink to="/skills" title="MD skills" className={linkClass}>
+          <BookOpen className="size-[18px]" />
+        </NavLink>
+        <button
+          title="Settings"
+          className="grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <Settings className="size-[18px]" />
+        </button>
+      </div>
     </nav>
   );
 }

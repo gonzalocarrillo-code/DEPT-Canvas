@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Command } from "cmdk";
 import { useNavigate } from "react-router";
-import { Plus, Search, Workflow, Sparkles } from "lucide-react";
+import { Plus, Search, Workflow, Sparkles, BookOpen } from "lucide-react";
 import { useProjectsStore } from "@/store/projectsStore";
 
 /** Global ⌘K / Ctrl+K command palette — also a project finder. */
@@ -66,6 +66,11 @@ export function CommandMenu() {
               <Workflow /> {p.name}
             </Command.Item>
           ))}
+        </Command.Group>
+        <Command.Group heading="Automation">
+          <Command.Item value="md skills library transcreation meta" onSelect={() => go("/skills")}>
+            <BookOpen /> MD skills library
+          </Command.Item>
         </Command.Group>
       </Command.List>
     </Command.Dialog>

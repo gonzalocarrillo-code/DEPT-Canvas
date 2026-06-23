@@ -24,7 +24,6 @@ import {
 import type { CanvasNodeData, NodeKind, NodeStatus } from "../types";
 import { kindInfo } from "../types";
 import { useGraphStore } from "../store";
-import { useBatchStore } from "@/batch/batchStore";
 import { TransformMenu } from "../TransformMenu";
 import { cn } from "@/lib/utils";
 
@@ -57,9 +56,6 @@ function NodeCardImpl({ id, data: raw, selected }: NodeProps) {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const pid = projectId ?? "demo";
-  // Transcreation / resize counts stay constant with the shared variation config.
-  const locales = useBatchStore((s) => s.selLocales);
-  const formats = useBatchStore((s) => s.selFormats);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const Icon = kindIcon[data.kind];
@@ -80,12 +76,7 @@ function NodeCardImpl({ id, data: raw, selected }: NodeProps) {
   };
 
   const showThumbnail = data.status === "done" && data.kind !== "brief";
-  const displayCount =
-    data.kind === "transcreate"
-      ? locales.length
-      : data.kind === "resize"
-        ? formats.length
-        : data.count ?? 0;
+  const displayCount = data.count ?? 0;
 
   return (
     <div
