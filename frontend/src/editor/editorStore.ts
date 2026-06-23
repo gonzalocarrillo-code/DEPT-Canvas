@@ -10,7 +10,7 @@ import type {
   LayerKind,
   ShapeType,
 } from "./types";
-import { EFFECT_CATALOG } from "./types";
+import { EFFECT_CATALOG, FORMATS } from "./types";
 import { sampleScene } from "./scene";
 import { buildPreset } from "./motionPresets";
 import { useGraphStore } from "../graph/store";
@@ -87,6 +87,7 @@ interface EditorState {
   toggleLock: (id: string) => void;
   addLayer: (kind: LayerKind) => void;
   addShape: (shapeType: ShapeType) => void;
+  importScene: (scene: { layers: Layer[]; width: number; height: number }) => void;
   reorderLayer: (id: string, dir: "front" | "back" | "forward" | "backward") => void;
   deleteLayer: (id: string) => void;
   duplicateLayer: (id: string) => void;
@@ -265,6 +266,29 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       layer = { ...common, kind: "shape", name: "Shape", fill: "#6f66e8", radius: 12 };
     }
     set({ layers: [...get().layers, layer], selectedId: id, selectedKeyframe: null });
+  },
+  importScene: (scene) => {
+    get().snap();
+    // Imported layers are normalized 0..1, so pick the format whose aspect is
+    // closest to the source document to preserve proportions.
+    const aspect = scene.width / Math.max(1, scene.height);
+    let format = get().format;
+    let best = Infinity;
+    (Object.keys(FORMATS) as FormatId[]).forEach((f) => {
+      const d = Math.abs(FORMATS[f].w / FORMATS[f].h - aspect);
+      if (d < best) {
+        best = d;
+        format = f;
+      }
+    });
+    set({
+      layers: scene.layers,
+      keyframes: {},
+      selectedId: scene.layers[0]?.id ?? null,
+      selectedKeyframe: null,
+      format,
+      mode: "design",
+    });
   },
   addShape: (shapeType) => {
     get().snap();

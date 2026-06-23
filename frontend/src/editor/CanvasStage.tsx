@@ -128,20 +128,23 @@ function LayerView({
         selected && !playing && "outline outline-2 outline-offset-2 outline-primary",
       )}
     >
-      {layer.kind === "image" && (
-        <div
-          className="h-full w-full overflow-hidden"
-          style={{ background: `radial-gradient(130% 130% at 0% 0%, hsl(${hue} 55% 30%), hsl(${hue} 45% 12%))` }}
-        >
+      {layer.kind === "image" &&
+        (layer.src ? (
+          <img src={layer.src} alt={layer.name} className="h-full w-full object-fill" draggable={false} />
+        ) : (
           <div
-            className="h-full w-full"
-            style={{
-              backgroundImage: "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)",
-              backgroundSize: "18px 18px",
-            }}
-          />
-        </div>
-      )}
+            className="h-full w-full overflow-hidden"
+            style={{ background: `radial-gradient(130% 130% at 0% 0%, hsl(${hue} 55% 30%), hsl(${hue} 45% 12%))` }}
+          >
+            <div
+              className="h-full w-full"
+              style={{
+                backgroundImage: "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)",
+                backgroundSize: "18px 18px",
+              }}
+            />
+          </div>
+        ))}
       {layer.kind === "shape" && (
         <div className="relative h-full w-full">
           {!layer.shapeType || layer.shapeType === "rect" ? (

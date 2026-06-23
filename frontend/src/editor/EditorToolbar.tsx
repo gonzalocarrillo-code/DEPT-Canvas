@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useNavigate, useParams } from "react-router";
-import { Undo2, Redo2, Download, Plus, Type, Image as ImageIcon, Shapes, ChevronRight, Boxes, Save, Check, Loader2 } from "lucide-react";
+import { Undo2, Redo2, Download, Plus, Type, Image as ImageIcon, Shapes, ChevronRight, Boxes, Save, Check, Loader2, FileUp } from "lucide-react";
 import { Button } from "@/ui/button";
 import { useEditorStore } from "./editorStore";
 import { useGraphStore } from "@/graph/store";
 import { saveScene } from "@/api/ai";
+import { parsePsd } from "./psdImport";
 import { FORMATS, SHAPE_LIBRARY, type EditorMode, type FormatId, type LayerKind } from "./types";
 
 const baseItems: { kind: LayerKind; label: string; icon: typeof Type }[] = [
@@ -28,7 +29,32 @@ export function EditorToolbar() {
   const redo = useEditorStore((s) => s.redo);
   const markSaved = useEditorStore((s) => s.markSaved);
   const markSetStale = useGraphStore((s) => s.markSetStale);
+  const importScene = useEditorStore((s) => s.importScene);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const onImportFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-importing the same file
+    if (!file) return;
+    setImportMsg("Importing…");
+    try {
+      const buf = await file.arrayBuffer();
+      const scene = parsePsd(buf);
+      if (!scene.layers.length) {
+        setImportMsg("No layers found");
+      } else {
+        importScene(scene);
+        setImportMsg(
+          `Imported ${scene.layers.length} layers${scene.warnings.length ? ` · ${scene.warnings[0]}` : ""}`,
+        );
+      }
+    } catch {
+      setImportMsg("Couldn't read that PSD");
+    }
+    window.setTimeout(() => setImportMsg(null), 4000);
+  };
 
   const onSave = async () => {
     const s = useEditorStore.getState();
@@ -117,10 +143,29 @@ export function EditorToolbar() {
                     </div>
                   )}
                 </div>
+                <div className="my-1 border-t border-border" />
+                <button
+                  onClick={() => {
+                    fileRef.current?.click();
+                    setAddOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-accent"
+                >
+                  <FileUp className="size-3.5 text-muted-foreground" /> Import PSD…
+                </button>
               </div>
             </>
           )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".psd,image/vnd.adobe.photoshop"
+            onChange={onImportFile}
+            className="hidden"
+          />
         </div>
+
+        {importMsg && <span className="text-xs text-muted-foreground">{importMsg}</span>}
 
         <div className="flex items-center rounded-lg border border-border bg-background p-0.5">
           {(["design", "animate"] as EditorMode[]).map((m) => (

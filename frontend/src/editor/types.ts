@@ -46,6 +46,8 @@ export interface Layer {
   letterSpacing?: number; // em
   // image
   hue?: number;
+  /** Data URL / object URL for a real image (e.g. an imported PSD raster layer). */
+  src?: string;
   // shape
   fill?: string;
   radius?: number; // px
