@@ -31,6 +31,7 @@ describe("app-proxy.test.ts — edge → orchestration", () => {
     resetRateLimitsForTests();
     delete process.env.ORCHESTRATION_URL;
     delete process.env.RENDERER_URL;
+    delete process.env.EDGE_ALLOWED_ORIGIN;
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -121,6 +122,41 @@ describe("app-proxy.test.ts — edge → orchestration", () => {
     const app = createEdgeApp();
     const res = await request(app).post("/api/ai/plan").send({ brief: "hi" });
     expect(res.status).toBe(401);
+  });
+
+  it("answers CORS preflight for the allowed origin without auth", async () => {
+    process.env.EDGE_ALLOWED_ORIGIN = "http://127.0.0.1:5173";
+    const app = createEdgeApp();
+    const res = await request(app)
+      .options("/api/ai/plan")
+      .set("origin", "http://127.0.0.1:5173");
+    expect(res.status).toBe(204);
+    expect(res.headers["access-control-allow-origin"]).toBe("http://127.0.0.1:5173");
+    expect(res.headers["access-control-allow-headers"]).toContain("authorization");
+  });
+
+  it("ignores a tenant_id in the body — tenant is the token's", async () => {
+    process.env.ORCHESTRATION_URL = "http://orchestration.internal:8800";
+    let forwardedTenant: string | undefined;
+    const realFetch = globalThis.fetch.bind(globalThis);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: unknown, init?: RequestInit) => {
+        if (typeof url === "string" && url.includes("orchestration.internal")) {
+          forwardedTenant = (init?.headers as Record<string, string>)["x-tenant-id"];
+          return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+        }
+        return realFetch(url as string, init);
+      }),
+    );
+    const app = createEdgeApp();
+    const auth = await bearerFor({ sub: "u1", tenant_id: "tenant-a", role: "creator" });
+    await request(app)
+      .post("/api/ai/generate")
+      .set("authorization", auth)
+      .send({ kind: "copy", prompt: "x", tenant_id: "tenant-b", tenantId: "tenant-b" });
+    expect(forwardedTenant).toBe("tenant-a");
+    vi.unstubAllGlobals();
   });
 
   it("forwards scene save/load with the path id and tenant from the token", async () => {

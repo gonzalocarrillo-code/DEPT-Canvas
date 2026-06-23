@@ -153,6 +153,12 @@ export function aiGateway(env: GatewayEnv): Plugin {
   return {
     name: "dept-ai-gateway",
     configureServer(server) {
+      // DEV-ONLY shortcut. The REAL path is the edge: set VITE_API_BASE_URL to the
+      // edge origin so /api/ai/* flow through edge → orchestration → scene-mcp,
+      // where locks, audit, tenancy and the safety pipeline apply.
+      server.config.logger.warn(
+        "[dept-ai-gateway] DEV ONLY — calls OpenAI directly and BYPASSES the edge/orchestration/scene-mcp invariants (locks, audit, tenancy, safety). Set VITE_API_BASE_URL to the edge for the real path.",
+      );
       server.middlewares.use("/api/ai/status", (req, res, next) => {
         if (req.method !== "GET") return next();
         sendJson(res, 200, {
