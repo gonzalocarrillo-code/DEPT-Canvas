@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import type { CanvasNodeData, LayerKindTag } from "../types";
 import { kindInfo } from "../types";
-import { useGraphStore } from "../store";
+import { useGraphStore, splitValues } from "../store";
 import { cn } from "@/lib/utils";
 
 const layerIcon: Record<LayerKindTag, typeof Type> = {
@@ -68,6 +68,10 @@ function DesignNode({ id, data, selected }: { id: string; data: CanvasNodeData; 
   const hue = data.hue ?? kindInfo.design.hue;
   const isVideo = data.outputKind === "video";
   const layerCount = data.layers?.length ?? 0;
+  // How many variations the next "+ Variation" will fan out: the longest value list
+  // across unlocked layers that carry a change (values zip by index).
+  const contributing = allNodes.filter((n) => n.data.kind === "layer" && !n.data.locked && splitValues(n.data.change as string).length > 0);
+  const fanout = contributing.length ? Math.min(24, Math.max(...contributing.map((n) => splitValues(n.data.change as string).length))) : 0;
 
   const exportApproved = () =>
     downloadJSON(`design-${pid}-approved.json`, {
@@ -122,10 +126,10 @@ function DesignNode({ id, data, selected }: { id: string; data: CanvasNodeData; 
         </button>
         <button
           onClick={() => addVariation(id)}
-          title="New variation — composes every layer change you've authored"
+          title="Fan out variations — each layer's lines zip into aligned variations"
           className="nodrag inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground transition-opacity hover:opacity-90"
         >
-          <Plus className="size-3.5" /> Variation
+          <Plus className="size-3.5" /> {fanout > 1 ? `${fanout} variations` : "Variation"}
         </button>
         <button
           onClick={approveAll}
@@ -160,6 +164,7 @@ function LayerNode({ id, data, selected }: { id: string; data: CanvasNodeData; s
   const kind = (data.layerKind as LayerKindTag) ?? "image";
   const Icon = layerIcon[kind];
   const hue = locked ? 38 : kindInfo.layer.hue;
+  const valueCount = splitValues(data.change as string).length;
 
   // Re-render every variation this layer feeds when its change is committed.
   const recomposeConnected = () => {
@@ -186,6 +191,8 @@ function LayerNode({ id, data, selected }: { id: string; data: CanvasNodeData; s
           <span className="inline-flex shrink-0 items-center gap-1 rounded border border-lock/40 px-1 py-0.5 text-[10px] font-medium text-lock">
             <Lock className="size-2.5" /> Locked
           </span>
+        ) : valueCount > 1 ? (
+          <span className="shrink-0 rounded border border-primary/50 px-1 py-0.5 font-mono text-[10px] text-primary" title={`${valueCount} values → ${valueCount} variations`}>×{valueCount}</span>
         ) : (
           <span className="shrink-0 rounded border border-border px-1 py-0.5 text-[9px] uppercase text-muted-foreground">{kind}</span>
         )}
@@ -207,7 +214,7 @@ function LayerNode({ id, data, selected }: { id: string; data: CanvasNodeData; s
             />
             <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
               <Sparkles className="size-2.5 text-primary" />
-              <span>Connect → a Variation to apply this change</span>
+              <span>{valueCount > 1 ? `${valueCount} lines → ${valueCount} variations` : "One line per variation"}</span>
               <button
                 onClick={() => navigate(`/project/${pid}/editor/design`)}
                 title="Edit this layer in the editor"

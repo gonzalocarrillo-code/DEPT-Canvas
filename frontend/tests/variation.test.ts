@@ -109,6 +109,30 @@ describe("layer-node variation model", () => {
     expect((node(vid)!.data.changes ?? []).map((c) => c.layerId)).toEqual(["headline"]);
   });
 
+  it("multi-value layer changes zip into N aligned variations (locale-paired)", () => {
+    setChange("headline", "translate to Chinese\ntranslate to Spanish\ntranslate to French");
+    setChange("bg", "Chinese flag backdrop\nSpanish flag backdrop\nFrench flag backdrop");
+    useGraphStore.getState().addVariation("design");
+    const vs = variations();
+    expect(vs).toHaveLength(3); // max value-count across layers
+    // each variation pairs the SAME index from both layers (no cartesian mismatch)
+    const byIndex = (i: number) => vs.find((v) => v.data.axisIndex === i)!;
+    const val = (i: number, layerId: string) => byIndex(i).data.changes!.find((c) => c.layerId === layerId)!.change;
+    expect([val(0, "headline"), val(0, "bg")]).toEqual(["translate to Chinese", "Chinese flag backdrop"]);
+    expect([val(1, "headline"), val(1, "bg")]).toEqual(["translate to Spanish", "Spanish flag backdrop"]);
+    expect([val(2, "headline"), val(2, "bg")]).toEqual(["translate to French", "French flag backdrop"]);
+  });
+
+  it("a shorter value list recycles its last value across the fan-out", () => {
+    setChange("headline", "to Chinese\nto Spanish"); // 2 values
+    setChange("bg", "neutral studio backdrop"); // 1 value — constant across both
+    useGraphStore.getState().addVariation("design");
+    const vs = variations();
+    expect(vs).toHaveLength(2);
+    const bgChanges = vs.map((v) => v.data.changes!.find((c) => c.layerId === "bg")!.change);
+    expect(bgChanges).toEqual(["neutral studio backdrop", "neutral studio backdrop"]);
+  });
+
   it("creating a variation is undoable", () => {
     const before = useGraphStore.getState().nodes.length;
     setChange("bg", "x");

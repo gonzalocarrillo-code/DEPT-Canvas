@@ -54,6 +54,8 @@ export interface CanvasNodeData {
   // ── variation node (the composed pre-render) ──
   /** The connected layer changes composed into this variation. */
   changes?: LayerChange[];
+  /** Which aligned slice (index) of the multi-value layer changes this variation is. */
+  axisIndex?: number;
   approval?: VariantApproval;
   /** Real generated image (data URL or remote URL) when the AI gateway is configured. */
   imageUrl?: string;

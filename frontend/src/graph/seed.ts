@@ -63,40 +63,40 @@ export function buildDesignGraph(design: DesignInput): { nodes: CanvasNode[]; ed
 // illustrating connect-and-compose the moment a demo project opens.
 export function seedGraph(_projectId: string): { nodes: CanvasNode[]; edges: CanvasEdge[] } {
   const manifest = defaultLayerManifest();
+  // Two values per layer (one per line) — they zip by index into two aligned
+  // market variations, illustrating multi-value fan-out the moment a demo opens.
   const { nodes, edges } = buildDesignGraph({
     title: "Fall / Winter — Master",
     outputKind: "image",
     layers: manifest,
     changes: {
-      headline: "translate the headline to Chinese",
-      bg: "swap the backdrop for a Chinese-flag-inspired scene",
+      headline: "translate the headline to Chinese\ntranslate the headline to Spanish",
+      bg: "swap the backdrop for a Chinese-flag-inspired scene\nswap the backdrop for a Spanish-flag-inspired scene",
     },
   });
 
   const entry = (id: string) => manifest.find((m) => m.id === id)!;
-  const changes: LayerChange[] = [
-    { layerId: "headline", layerName: entry("headline").name, layerKind: "text", change: "translate the headline to Chinese" },
-    { layerId: "bg", layerName: entry("bg").name, layerKind: "image", change: "swap the backdrop for a Chinese-flag-inspired scene" },
+  const markets = [
+    { idx: 0, name: "Chinese market", headline: "translate the headline to Chinese", bg: "swap the backdrop for a Chinese-flag-inspired scene", hlLabel: "Chinese", bgLabel: "Chinese flag", hue: 0 },
+    { idx: 1, name: "Spanish market", headline: "translate the headline to Spanish", bg: "swap the backdrop for a Spanish-flag-inspired scene", hlLabel: "Spanish", bgLabel: "Spanish flag", hue: 45 },
   ];
-  const variationId = "variation-demo";
-  nodes.push({
-    id: variationId,
-    type: "canvasNode",
-    position: { x: COL * 2 + 60, y: ROW },
-    data: {
-      kind: "variation",
-      title: "Chinese market",
-      status: "done",
-      outputKind: "image",
-      hue: 0,
-      changes,
-      approval: "pending",
-    },
+  markets.forEach((m, k) => {
+    const changes: LayerChange[] = [
+      { layerId: "headline", layerName: entry("headline").name, layerKind: "text", change: m.headline },
+      { layerId: "bg", layerName: entry("bg").name, layerKind: "image", change: m.bg },
+    ];
+    const vid = `variation-${m.idx}`;
+    nodes.push({
+      id: vid,
+      type: "canvasNode",
+      position: { x: COL * 2 + 60, y: k * ROW },
+      data: { kind: "variation", title: m.name, status: "done", outputKind: "image", hue: m.hue, changes, approval: "pending", axisIndex: m.idx },
+    });
+    edges.push(
+      { id: `e-layer-headline-${vid}`, source: "layer-headline", target: vid, label: `Headline · ${m.hlLabel}` },
+      { id: `e-layer-bg-${vid}`, source: "layer-bg", target: vid, label: `Background · ${m.bgLabel}` },
+    );
   });
-  edges.push(
-    { id: `e-layer-headline-${variationId}`, source: "layer-headline", target: variationId, label: "Headline · Chinese" },
-    { id: `e-layer-bg-${variationId}`, source: "layer-bg", target: variationId, label: "Background · Chinese flag" },
-  );
 
   return { nodes, edges };
 }
