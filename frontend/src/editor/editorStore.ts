@@ -89,6 +89,7 @@ interface EditorState {
   endInteraction: () => void;
   markSaved: () => void;
   publishManifest: () => void;
+  getManifest: () => LayerManifestEntry[];
   undo: () => void;
   redo: () => void;
   load: (sceneId: string, seed?: SceneSeed) => void;
@@ -171,13 +172,14 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   },
   endInteraction: () => set({ histTag: null }),
   markSaved: () => set({ dirty: false }),
-  // Mirror the design's real layers + per-layer locks onto the graph node, so the
-  // graph variation sees this exact design (lock in editor → locked in graph).
+  // Mirror the design's real layers + per-layer locks onto the graph (the design
+  // node + its layer nodes), so the graph sees this exact design — lock in editor →
+  // locked layer node in graph. Only the master design ("design") mirrors a manifest.
   publishManifest: () => {
-    const sid = get().sceneId;
-    if (!sid) return;
-    useGraphStore.getState().updateNodeData(sid, { layers: manifestOf(get().layers) });
+    if (get().sceneId !== "design") return;
+    useGraphStore.getState().syncManifest(manifestOf(get().layers));
   },
+  getManifest: () => manifestOf(get().layers),
   undo: () => {
     const s = get();
     if (!s.past.length) return;

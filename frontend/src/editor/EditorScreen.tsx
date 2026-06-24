@@ -35,19 +35,20 @@ export function EditorScreen() {
     [],
   );
 
-  // Connect to the graph: the editor edits the scene behind the opened node.
+  // Connect to the graph: the editor edits the design (or a variation) behind the
+  // opened node. The master design uses the stable id "design".
   useEffect(() => {
-    const id = sceneId ?? "scene";
+    const id = sceneId ?? "design";
     load(
       id,
       node
         ? {
             title: node.data.title,
             locked: Boolean(node.data.locked),
-            mode: node.data.kind === "animate" ? "animate" : "design",
+            mode: node.data.outputKind === "video" ? "animate" : "design",
             layers: node.data.layers,
           }
-        : { title: "Scene" },
+        : { title: "Design" },
     );
   }, [sceneId, node, load]);
 

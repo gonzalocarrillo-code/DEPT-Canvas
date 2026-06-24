@@ -5,7 +5,6 @@ import { ArrowLeft, Sparkles, Loader2, AlertTriangle, Wand2, Check } from "lucid
 import { Button } from "@/ui/button";
 import { getAiStatus, requestPlan } from "@/api/ai";
 import { useProjectsStore } from "@/store/projectsStore";
-import { useGraphStore } from "@/graph/store";
 
 interface PlanShape {
   master: { title: string; prompt: string };
@@ -27,7 +26,6 @@ const STARTER: PlanShape = {
 export function BriefComposer() {
   const navigate = useNavigate();
   const createProject = useProjectsStore((s) => s.createProject);
-  const buildFromPlan = useGraphStore((s) => s.buildFromPlan);
   const [brief, setBrief] = useState("");
 
   const status = useQuery({
@@ -42,9 +40,10 @@ export function BriefComposer() {
   const plan = planM.data;
 
   const approve = (p: PlanShape) => {
-    const project = createProject({ name: brief.slice(0, 48) || "New campaign", entry: "brief" });
-    buildFromPlan(project.id, p);
-    navigate(`/project/${project.id}/graph`);
+    // Editor-first: the brief seeds the project, then opens the editor to design the
+    // master scene. Push to graph branches variations from its layers.
+    const project = createProject({ name: p.master.title || brief.slice(0, 48) || "New campaign", entry: "brief" });
+    navigate(`/project/${project.id}/editor`);
   };
 
   return (

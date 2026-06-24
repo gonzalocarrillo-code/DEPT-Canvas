@@ -1,14 +1,20 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useNavigate, useParams } from "react-router";
-import { Undo2, Redo2, Download, Plus, Type, Image as ImageIcon, Shapes, ChevronRight, Boxes, Save, Check, Loader2, FileUp } from "lucide-react";
+import { Undo2, Redo2, Download, Plus, Type, Image as ImageIcon, Film, Shapes, ChevronRight, Share2, Save, Check, Loader2, FileUp } from "lucide-react";
 import { Button } from "@/ui/button";
 import { useEditorStore } from "./editorStore";
 import { useGraphStore } from "@/graph/store";
 import { saveScene } from "@/api/ai";
 import { parsePsd } from "./psdImport";
 import { parseSvg } from "./svgImport";
-import { FORMATS, SHAPE_LIBRARY, type EditorMode, type FormatId, type LayerKind } from "./types";
+import { FORMATS, SHAPE_LIBRARY, type FormatId, type LayerKind } from "./types";
+
+// The project produces ONE output kind, chosen here; video reveals the timeline.
+const OUTPUT_MODES = [
+  { mode: "design", label: "Image", Icon: ImageIcon },
+  { mode: "animate", label: "Video", Icon: Film },
+] as const;
 
 const baseItems: { kind: LayerKind; label: string; icon: typeof Type }[] = [
   { kind: "text", label: "Text", icon: Type },
@@ -30,6 +36,7 @@ export function EditorToolbar() {
   const redo = useEditorStore((s) => s.redo);
   const markSaved = useEditorStore((s) => s.markSaved);
   const markSetStale = useGraphStore((s) => s.markSetStale);
+  const pushToGraph = useGraphStore((s) => s.pushToGraph);
   const importScene = useEditorStore((s) => s.importScene);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [importMsg, setImportMsg] = useState<string | null>(null);
@@ -168,15 +175,15 @@ export function EditorToolbar() {
 
         {importMsg && <span className="text-xs text-muted-foreground">{importMsg}</span>}
 
-        <div className="flex items-center rounded-lg border border-border bg-background p-0.5">
-          {(["design", "animate"] as EditorMode[]).map((m) => (
+        <div className="flex items-center rounded-lg border border-border bg-background p-0.5" title="Output kind — video reveals the animation timeline">
+          {OUTPUT_MODES.map(({ mode: m, label, Icon }) => (
             <button
               key={m}
               onClick={() => setMode(m)}
               data-active={mode === m}
-              className="rounded-md px-3 py-1 text-xs font-medium capitalize text-muted-foreground transition-colors data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-colors data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
             >
-              {m}
+              <Icon className="size-3.5" /> {label}
             </button>
           ))}
         </div>
@@ -230,14 +237,22 @@ export function EditorToolbar() {
           {saveState === "saved" ? "Saved" : saveState === "error" ? "Retry" : "Save"}
         </Button>
         <Button
-          variant="secondary"
+          variant="primary"
           size="sm"
-          onClick={() => navigate(`/project/${projectId ?? "demo"}/graph`)}
-          title="Fan out variations on the graph"
+          onClick={() => {
+            const s = useEditorStore.getState();
+            pushToGraph(projectId ?? "demo", {
+              title: s.sceneTitle,
+              outputKind: s.mode === "animate" ? "video" : "image",
+              layers: s.getManifest(),
+            });
+            navigate(`/project/${projectId ?? "demo"}/graph`);
+          }}
+          title="Push this design to the graph to branch variations"
         >
-          <Boxes className="size-3.5" /> Variations
+          <Share2 className="size-3.5" /> Push to graph
         </Button>
-        <Button variant="primary" size="sm">
+        <Button variant="secondary" size="sm">
           <Download className="size-3.5" /> Export
         </Button>
       </div>

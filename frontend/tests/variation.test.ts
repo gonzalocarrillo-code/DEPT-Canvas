@@ -1,177 +1,120 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from "vitest";
 import { useGraphStore } from "@/graph/store";
-import type { CanvasNode, LayerManifestEntry, VariableLayer } from "@/graph/types";
+import type { LayerManifestEntry } from "@/graph/types";
 
-// The master mirrors a real editor design: 3 unlocked layers + 1 brand-locked logo.
-// This manifest is the editor↔graph seam — locking in the editor lands here.
+// A pushed design: 2 unlocked layers + 1 brand-locked logo. This manifest is the
+// editor↔graph seam — locking in the editor lands here as locked layer nodes.
 const LAYERS: LayerManifestEntry[] = [
   { id: "bg", name: "Background", kind: "image", locked: false },
   { id: "headline", name: "Headline", kind: "text", locked: false },
-  { id: "cta", name: "CTA button", kind: "graphic", locked: false },
   { id: "logo", name: "Logo lockup", kind: "image", locked: true },
 ];
 
-const master: CanvasNode = {
-  id: "master",
-  type: "canvasNode",
-  position: { x: 0, y: 0 },
-  data: { kind: "image", title: "Master", status: "done", layers: LAYERS },
-};
-
 function reset() {
-  useGraphStore.setState({
-    projectId: "test",
-    nodes: [{ ...master, data: { ...master.data, layers: LAYERS } }],
-    edges: [],
-    past: [],
-    future: [],
-    clipboard: [],
-  });
+  useGraphStore.setState({ projectId: null, nodes: [], edges: [], past: [], future: [], clipboard: [], pushed: {}, graphCache: {} });
+  useGraphStore.getState().pushToGraph("test", { title: "Test design", outputKind: "image", layers: LAYERS });
 }
 
-// Prompt axis expanded to n values, by layer id.
-const prompt = (layerId: string, expandTo: number): VariableLayer => ({
-  layerId,
-  axis: { kind: "prompt", instruction: layerId, expandTo },
-});
-const values = (layerId: string, vals: string[]): VariableLayer => ({
-  layerId,
-  axis: { kind: "values", values: vals },
-});
+const node = (id: string) => useGraphStore.getState().nodes.find((n) => n.id === id);
+const byKind = (k: string) => useGraphStore.getState().nodes.filter((n) => n.data.kind === k);
+const variations = () => byKind("variation");
+const edgesInto = (id: string) => useGraphStore.getState().edges.filter((e) => e.target === id);
+const setChange = (layerId: string, change: string) => useGraphStore.getState().updateNodeData(`layer-${layerId}`, { change });
 
-const variants = () => useGraphStore.getState().nodes.filter((n) => n.data.kind === "variant");
-const sets = () => useGraphStore.getState().nodes.filter((n) => n.data.kind === "variation-set");
-
-describe("graph-native variations — createVariationSet (layer-based)", () => {
+describe("layer-node variation model", () => {
   beforeEach(reset);
 
-  it("branches one variation-set + N variants per layer-lane (3 layers × 4 = 12)", () => {
-    useGraphStore.getState().createVariationSet("master", {
-      variableLayers: [prompt("bg", 4), prompt("headline", 4), prompt("cta", 4)],
-      outputKind: "image",
-      skillId: null,
-    });
-    expect(sets()).toHaveLength(1);
-    expect(variants()).toHaveLength(12);
-    // every variant is wired to the set, and the set to the master
-    const setId = sets()[0].id;
-    const edges = useGraphStore.getState().edges;
-    expect(edges.some((e) => e.source === "master" && e.target === setId)).toBe(true);
-    expect(edges.filter((e) => e.source === setId).length).toBe(12);
-    // edges carry the delta label so the wire states the varied axis
-    expect(edges.filter((e) => e.source === setId).every((e) => typeof e.label === "string")).toBe(true);
+  it("push builds a design master + one node per layer, logo brand-locked", () => {
+    expect(byKind("design")).toHaveLength(1);
+    expect(byKind("layer")).toHaveLength(3);
+    expect(node("design")!.data.layers).toHaveLength(3);
+    expect(node("layer-logo")!.data.locked).toBe(true);
+    expect(node("layer-bg")!.data.locked).toBe(false);
+    // each layer is wired from the design
+    expect(useGraphStore.getState().edges.filter((e) => e.source === "design")).toHaveLength(3);
   });
 
-  it("drops layers locked in the editor — they can never become a varied axis", () => {
-    useGraphStore.getState().createVariationSet("master", {
-      variableLayers: [prompt("logo", 3), prompt("bg", 3)], // logo is locked in the manifest
-      outputKind: "image",
-      skillId: null,
-    });
-    // only the unlocked background varied; the locked logo produced nothing
-    expect(variants()).toHaveLength(3);
-    expect(variants().every((v) => v.data.slotId === "bg")).toBe(true);
+  it("addVariation auto-wires unlocked layers that carry a change and composes them", () => {
+    setChange("bg", "swap to a Chinese flag backdrop");
+    setChange("headline", "translate to Chinese");
+    setChange("logo", "this should be ignored — locked"); // locked: never varies
+    const vid = useGraphStore.getState().addVariation("design")!;
+    expect(vid).toBeTruthy();
+    expect(variations()).toHaveLength(1);
+    const v = node(vid)!;
+    // composed from the two unlocked layers only — the locked logo is excluded
+    expect(v.data.changes).toHaveLength(2);
+    expect((v.data.changes ?? []).map((c) => c.layerId).sort()).toEqual(["bg", "headline"]);
+    expect(v.data.status).toBe("generating");
+    expect(v.data.outputKind).toBe("image");
+    // wired from the two unlocked layer nodes, not from the locked logo
+    const sources = edgesInto(vid).map((e) => e.source).sort();
+    expect(sources).toEqual(["layer-bg", "layer-headline"]);
   });
 
-  it("a values axis produces one variant per value (text layers carry variantText)", () => {
-    useGraphStore.getState().createVariationSet("master", {
-      variableLayers: [values("headline", ["EN", "ES", "FR"])],
-      outputKind: "image",
-      skillId: "meta-ads",
-    });
-    expect(variants()).toHaveLength(3);
-    expect(variants().every((v) => typeof v.data.variantText === "string")).toBe(true);
+  it("a locked layer can never feed a variation (onConnect enforced in code)", () => {
+    const vid = useGraphStore.getState().addVariation("design")!;
+    setChange("logo", "Chinese flag");
+    useGraphStore.getState().onConnect({ source: "layer-logo", target: vid, sourceHandle: null, targetHandle: null });
+    expect(edgesInto(vid)).toHaveLength(0);
   });
 
-  it("caps spawned variant nodes per lane (prompt expandTo 50 → 6 nodes, full count on the set)", () => {
-    useGraphStore.getState().createVariationSet("master", {
-      variableLayers: [prompt("bg", 50)],
-      outputKind: "image",
-      skillId: null,
-    });
-    expect(variants()).toHaveLength(6); // PREVIEW_PER_LANE cap
-    expect(sets()[0].data.count).toBe(50); // set node reflects the full batch
+  it("connecting an unlocked layer recomposes the variation", () => {
+    const vid = useGraphStore.getState().addVariation("design")!; // empty (no changes yet)
+    expect(node(vid)!.data.changes ?? []).toHaveLength(0);
+    setChange("headline", "translate to Spanish");
+    useGraphStore.getState().onConnect({ source: "layer-headline", target: vid, sourceHandle: null, targetHandle: null });
+    expect(edgesInto(vid)).toHaveLength(1);
+    expect(node(vid)!.data.changes).toHaveLength(1);
+    expect(node(vid)!.data.changes![0].change).toBe("translate to Spanish");
   });
 
-  it("carries the chosen output kind onto the set and variants", () => {
-    useGraphStore.getState().createVariationSet("master", {
-      variableLayers: [prompt("bg", 2)],
-      outputKind: "video",
-      skillId: null,
-    });
-    expect(sets()[0].data.outputKind).toBe("video");
-    expect(variants().every((v) => v.data.outputKind === "video")).toBe(true);
+  it("composeVariation rebuilds the change list from the current layer nodes", () => {
+    setChange("headline", "translate to Chinese");
+    const vid = useGraphStore.getState().addVariation("design")!;
+    setChange("headline", "translate to Japanese"); // edit after wiring
+    useGraphStore.getState().composeVariation(vid);
+    expect(node(vid)!.data.changes![0].change).toBe("translate to Japanese");
+    expect(node(vid)!.data.status).toBe("generating");
+    expect(node(vid)!.data.stale).toBe(false);
   });
 
-  it("approve / reject flip a variant's approval", () => {
-    useGraphStore.getState().createVariationSet("master", {
-      variableLayers: [prompt("bg", 2)],
-      outputKind: "image",
-      skillId: null,
-    });
-    const [a, b] = variants();
-    useGraphStore.getState().approveVariant(a.id);
-    useGraphStore.getState().rejectVariant(b.id);
-    const after = variants();
-    expect(after.find((v) => v.id === a.id)?.data.approval).toBe("approved");
-    expect(after.find((v) => v.id === b.id)?.data.approval).toBe("rejected");
+  it("approve / reject flip a variation's approval", () => {
+    setChange("bg", "x");
+    const vid = useGraphStore.getState().addVariation("design")!;
+    useGraphStore.getState().approveVariant(vid);
+    expect(node(vid)!.data.approval).toBe("approved");
+    useGraphStore.getState().rejectVariant(vid);
+    expect(node(vid)!.data.approval).toBe("rejected");
   });
 
-  it("creating a set is undoable (history snapshot)", () => {
+  it("markSetStale flags every variation when the design is re-edited", () => {
+    setChange("bg", "x");
+    const vid = useGraphStore.getState().addVariation("design")!;
+    expect(node(vid)!.data.stale).toBeFalsy();
+    useGraphStore.getState().markSetStale("design");
+    expect(node(vid)!.data.stale).toBe(true);
+  });
+
+  it("syncManifest mirrors an editor lock onto the layer node (lock in editor → locked in graph)", () => {
+    expect(node("layer-bg")!.data.locked).toBe(false);
+    const locked = LAYERS.map((l) => (l.id === "bg" ? { ...l, locked: true } : l));
+    useGraphStore.getState().syncManifest(locked);
+    expect(node("layer-bg")!.data.locked).toBe(true);
+    // and a freshly composed variation now excludes the newly-locked layer
+    setChange("bg", "should be ignored now");
+    setChange("headline", "translate to Chinese");
+    const vid = useGraphStore.getState().addVariation("design")!;
+    expect((node(vid)!.data.changes ?? []).map((c) => c.layerId)).toEqual(["headline"]);
+  });
+
+  it("creating a variation is undoable", () => {
     const before = useGraphStore.getState().nodes.length;
-    useGraphStore.getState().createVariationSet("master", {
-      variableLayers: [prompt("bg", 3)],
-      outputKind: "image",
-      skillId: null,
-    });
-    expect(useGraphStore.getState().nodes.length).toBeGreaterThan(before);
+    setChange("bg", "x");
+    useGraphStore.getState().addVariation("design");
+    expect(useGraphStore.getState().nodes.length).toBe(before + 1);
     useGraphStore.getState().undo();
     expect(useGraphStore.getState().nodes.length).toBe(before);
-  });
-
-  it("markSetStale flags variants derived from a re-edited master", () => {
-    useGraphStore.getState().createVariationSet("master", {
-      variableLayers: [prompt("bg", 2), prompt("headline", 2)],
-      outputKind: "image",
-      skillId: null,
-    });
-    expect(variants().every((v) => !v.data.stale)).toBe(true);
-    useGraphStore.getState().markSetStale("master");
-    expect(variants().every((v) => v.data.stale === true)).toBe(true);
-  });
-
-  it("reDeriveVariant clears stale and re-enters generating", () => {
-    useGraphStore.getState().createVariationSet("master", {
-      variableLayers: [prompt("bg", 1)],
-      outputKind: "image",
-      skillId: null,
-    });
-    useGraphStore.getState().markSetStale("master");
-    const v = variants()[0];
-    useGraphStore.getState().reDeriveVariant(v.id);
-    const after = variants().find((x) => x.id === v.id);
-    expect(after?.data.stale).toBe(false);
-    expect(after?.data.status).toBe("generating");
-    expect(after?.data.approval).toBe("pending");
-  });
-
-  it("a layer locked in the editor after derivation cannot be re-derived", () => {
-    useGraphStore.getState().createVariationSet("master", {
-      variableLayers: [prompt("bg", 1)],
-      outputKind: "image",
-      skillId: null,
-    });
-    const v = variants()[0];
-    useGraphStore.getState().updateNodeData(v.id, { status: "done" }); // it finished
-    // Simulate the editor locking the background and re-publishing the manifest.
-    const lockedLayers = LAYERS.map((l) => (l.id === "bg" ? { ...l, locked: true } : l));
-    useGraphStore.getState().updateNodeData("master", { layers: lockedLayers });
-    useGraphStore.getState().markSetStale("master");
-    useGraphStore.getState().reDeriveVariant(v.id);
-    const after = variants().find((x) => x.id === v.id);
-    // lock is enforced in code: stale clears but it does NOT re-enter generating
-    expect(after?.data.stale).toBe(false);
-    expect(after?.data.status).toBe("done");
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -10,96 +10,57 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { useShallow } from "zustand/react/shallow";
-import { Plus, Download, Play, Loader2 } from "lucide-react";
+import { Download, Play, Loader2, CheckCheck } from "lucide-react";
 import { useGraphStore } from "./store";
 import { useGraphShortcuts } from "./useGraphShortcuts";
 import { nodeTypes } from "./nodes";
-import { kindInfo, type NodeKind } from "./types";
-
-const ADD_KINDS: NodeKind[] = [
-  "brief",
-  "image",
-  "copy",
-  "video",
-  "transcreate",
-  "resize",
-  "animate",
-  "picture-idea",
-];
-
-function AddNodeMenu() {
-  const addNode = useGraphStore((s) => s.addNode);
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent"
-      >
-        <Plus className="size-3.5" /> Add node
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full z-20 mt-1 w-44 rounded-lg border border-border bg-popover p-1 shadow-xl">
-            {ADD_KINDS.map((kind) => (
-              <button
-                key={kind}
-                onClick={() => {
-                  addNode(kind);
-                  setOpen(false);
-                }}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-accent"
-              >
-                <span
-                  className="size-2 rounded-full"
-                  style={{ background: `hsl(${kindInfo[kind].hue} 60% 62%)` }}
-                />
-                {kindInfo[kind].label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 function GenerateAllButton() {
   const generateAll = useGraphStore((s) => s.generateAll);
   const generating = useGraphStore((s) => s.nodes.some((n) => n.data.status === "generating"));
+  const hasVariations = useGraphStore((s) => s.nodes.some((n) => n.data.kind === "variation"));
   return (
     <button
       onClick={generateAll}
-      disabled={generating}
-      title="Run every generation node — renders the whole graph in loading states"
+      disabled={generating || !hasVariations}
+      title="Re-render every variation from the current design"
       className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent disabled:opacity-60"
     >
-      {generating ? (
-        <Loader2 className="size-3.5 animate-spin text-primary" />
-      ) : (
-        <Play className="size-3.5 text-primary" />
-      )}
-      {generating ? "Generating…" : "Generate all"}
+      {generating ? <Loader2 className="size-3.5 animate-spin text-primary" /> : <Play className="size-3.5 text-primary" />}
+      {generating ? "Rendering…" : "Render all"}
+    </button>
+  );
+}
+
+function ApproveAllButton() {
+  const approveAll = useGraphStore((s) => s.approveAll);
+  const ready = useGraphStore((s) => s.nodes.some((n) => n.data.kind === "variation" && n.data.status === "done" && n.data.approval !== "approved"));
+  return (
+    <button
+      onClick={approveAll}
+      disabled={!ready}
+      title="Approve every ready variation"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent disabled:opacity-40"
+    >
+      <CheckCheck className="size-3.5 text-success" /> Approve all
     </button>
   );
 }
 
 function ExportApprovedButton() {
   const nodes = useGraphStore((s) => s.nodes);
-  const approved = nodes.filter((n) => n.data.kind === "variant" && n.data.approval === "approved");
+  const approved = nodes.filter((n) => n.data.kind === "variation" && n.data.approval === "approved");
   const exportAll = () => {
     const manifest = {
-      exportedAt: new Date().toISOString(),
       count: approved.length,
-      variants: approved.map((v) => ({ id: v.id, delta: v.data.delta, slot: v.data.slotId, set: v.data.setId })),
-      note: "generate-once / render-many: each approved scene renders to all sizes server-side",
+      variations: approved.map((v) => ({ id: v.id, title: v.data.title, outputKind: v.data.outputKind, changes: v.data.changes })),
+      note: "generate-once / render-many: each approved variation renders to all sizes server-side",
     };
     const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "approved-variants.json";
+    a.download = "approved-variations.json";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -107,7 +68,7 @@ function ExportApprovedButton() {
     <button
       onClick={exportAll}
       disabled={approved.length === 0}
-      title="Export all approved variants across the graph"
+      title="Export all approved variations"
       className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent disabled:opacity-40"
     >
       <Download className="size-3.5" /> Export approved
@@ -139,10 +100,7 @@ function Flow({ projectId }: { projectId: string }) {
   useEffect(() => {
     if (!didFit.current && nodes.length > 0) {
       didFit.current = true;
-      window.setTimeout(
-        () => fitView({ padding: 0.35, maxZoom: 0.95, duration: 300 }),
-        0,
-      );
+      window.setTimeout(() => fitView({ padding: 0.3, maxZoom: 0.95, duration: 300 }), 0);
     }
   }, [nodes.length, fitView]);
 
@@ -160,8 +118,8 @@ function Flow({ projectId }: { projectId: string }) {
       maxZoom={1.5}
       deleteKeyCode={["Backspace", "Delete"]}
       onBeforeDelete={async ({ nodes: delNodes, edges: delEdges }) => {
-        // Brand-locked nodes can't be deleted; snapshot first so delete is undoable.
-        const allowed = delNodes.filter((n) => !n.data?.locked);
+        // The design root and brand-locked layers can't be deleted; snapshot first.
+        const allowed = delNodes.filter((n) => n.data?.kind !== "design" && !n.data?.locked);
         if (!allowed.length && !delEdges.length) return false;
         useGraphStore.getState().pushHistory();
         return { nodes: allowed, edges: delEdges };
@@ -169,21 +127,14 @@ function Flow({ projectId }: { projectId: string }) {
       defaultEdgeOptions={{ type: "smoothstep" }}
       proOptions={{ hideAttribution: true }}
     >
-      <Panel position="top-left">
-        <AddNodeMenu />
-      </Panel>
       <Panel position="top-right">
         <div className="flex items-center gap-2">
           <GenerateAllButton />
+          <ApproveAllButton />
           <ExportApprovedButton />
         </div>
       </Panel>
-      <Background
-        variant={BackgroundVariant.Dots}
-        gap={20}
-        size={1}
-        color="var(--color-grid-dot)"
-      />
+      <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--color-grid-dot)" />
       <Controls showInteractive={false} />
       <MiniMap pannable zoomable nodeColor="#6f66e8" maskColor="rgba(11,11,16,0.78)" />
     </ReactFlow>

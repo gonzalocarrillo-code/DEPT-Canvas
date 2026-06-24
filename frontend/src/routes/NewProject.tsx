@@ -11,7 +11,7 @@ export function NewProject() {
 
   const startScratch = () => {
     const project = createProject({ entry: "scratch" });
-    navigate(`/project/${project.id}/graph`);
+    navigate(`/project/${project.id}/editor`);
   };
 
   return (
@@ -45,7 +45,7 @@ export function NewProject() {
             kicker="MANUAL"
             icon={<Plus className="size-5" />}
             title="Start from scratch"
-            body="Open a blank grid canvas and build node by node — generate, transcreate, resize and animate as you go."
+            body="Open the editor and design your scene — image or video, lock what's fixed — then push it to the graph to branch AI variations."
             onClick={startScratch}
           />
         </div>

@@ -1,62 +1,39 @@
-import { memo, useState } from "react";
+import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { useNavigate, useParams } from "react-router";
 import {
-  FileText,
   Image as ImageIcon,
   Type,
+  Square,
   Film,
-  Languages,
-  Scaling,
-  Play,
-  ImagePlus,
+  Layers,
   Lock,
-  RefreshCw,
-  Download,
-  Plus,
-  Check,
-  Clock,
-  Loader2,
-  AlertTriangle,
-  Circle,
   PenLine,
+  Plus,
   Sparkles,
-  Boxes,
+  Check,
+  CheckCheck,
   X,
+  Download,
+  RefreshCw,
+  Loader2,
+  Play,
 } from "lucide-react";
-import type { CanvasNodeData, NodeKind, NodeStatus } from "../types";
+import type { CanvasNodeData, LayerKindTag } from "../types";
 import { kindInfo } from "../types";
 import { useGraphStore } from "../store";
-import { TransformMenu } from "../TransformMenu";
-import { VariationComposer } from "../VariationComposer";
-import { LOCALE_OPTIONS } from "@/batch/batchStore";
-import { useSkillsStore } from "@/skills/skills";
-import { FORMATS } from "@/editor/types";
-import { MOTION_PRESETS } from "@/editor/motionPresets";
 import { cn } from "@/lib/utils";
 
-// Kinds that show a visual thumbnail when done (others show their controls only).
-const VISUAL_KINDS = new Set<NodeKind>(["image", "picture-idea", "video"]);
-
-const kindIcon: Record<NodeKind, typeof FileText> = {
-  brief: FileText,
+const layerIcon: Record<LayerKindTag, typeof Type> = {
+  text: Type,
   image: ImageIcon,
-  copy: Type,
-  video: Film,
-  transcreate: Languages,
-  resize: Scaling,
-  animate: Play,
-  "picture-idea": ImagePlus,
-  "variation-set": Boxes,
-  variant: ImageIcon,
+  graphic: Square,
 };
 
-const statusInfo: Record<NodeStatus, { icon: typeof Check; cls: string; label: string }> = {
-  idle: { icon: Circle, cls: "text-muted-foreground", label: "Idle" },
-  queued: { icon: Clock, cls: "text-muted-foreground", label: "Queued" },
-  generating: { icon: Loader2, cls: "text-primary animate-spin", label: "Generating" },
-  done: { icon: Check, cls: "text-success", label: "Ready" },
-  error: { icon: AlertTriangle, cls: "text-destructive", label: "Error" },
+const changePlaceholder: Record<LayerKindTag, string> = {
+  text: "e.g. translate to Chinese · punchier hook",
+  image: "e.g. swap to a Chinese flag backdrop",
+  graphic: "e.g. recolor to brand red · rounder corners",
 };
 
 function downloadJSON(filename: string, data: unknown) {
@@ -71,211 +48,226 @@ function downloadJSON(filename: string, data: unknown) {
 
 function NodeCardImpl({ id, data: raw, selected }: NodeProps) {
   const data = raw as CanvasNodeData;
-  if (data.kind === "variant") return <VariantNode id={id} data={data} selected={selected} />;
-  if (data.kind === "variation-set") return <VariationSetNode id={id} data={data} selected={selected} />;
-  return <GenericNode id={id} data={data} selected={selected} />;
+  if (data.kind === "design") return <DesignNode id={id} data={data} selected={selected} />;
+  if (data.kind === "layer") return <LayerNode id={id} data={data} selected={selected} />;
+  return <VariationNode id={id} data={data} selected={selected} />;
 }
 
-// ── Generic ideation/asset node (brief, image, copy, …) ──────────────────
-function GenericNode({ id, data, selected }: { id: string; data: CanvasNodeData; selected?: boolean }) {
-  const updateNodeData = useGraphStore((s) => s.updateNodeData);
-  const addChild = useGraphStore((s) => s.addChild);
+// ── Design (the master scene pushed from the editor) ─────────────────────
+function DesignNode({ id, data, selected }: { id: string; data: CanvasNodeData; selected?: boolean }) {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const pid = projectId ?? "demo";
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [varyOpen, setVaryOpen] = useState(false);
-  const skills = useSkillsStore((s) => s.skills);
+  const addVariation = useGraphStore((s) => s.addVariation);
+  const approveAll = useGraphStore((s) => s.approveAll);
+  // Select the stable nodes reference and derive in the body — a selector that
+  // returns a new array each render breaks useSyncExternalStore (React #185).
+  const allNodes = useGraphStore((s) => s.nodes);
+  const variations = allNodes.filter((n) => n.data.kind === "variation");
+  const approved = variations.filter((v) => v.data.approval === "approved");
+  const hue = data.hue ?? kindInfo.design.hue;
+  const isVideo = data.outputKind === "video";
+  const layerCount = data.layers?.length ?? 0;
 
-  const Icon = kindIcon[data.kind];
-  const status = statusInfo[data.status];
-  const StatusIcon = status.icon;
-  const hue = data.hue ?? kindInfo[data.kind].hue;
-  const locked = Boolean(data.locked);
-  const isGenerating = data.status === "generating";
-  // The master + any finished visual asset can fan out variations.
-  const canVary =
-    !locked && data.status === "done" && (data.kind === "image" || data.kind === "video");
-
-  const regenerate = () => {
-    if (locked) return;
-    updateNodeData(id, { status: "generating" });
-    window.setTimeout(() => updateNodeData(id, { status: "done" }), 1400);
-  };
-  const spawn = (kind: NodeKind) => {
-    addChild(id, kind);
-    setMenuOpen(false);
-  };
-
-  const showThumbnail = data.status === "done" && VISUAL_KINDS.has(data.kind);
-  const displayCount =
-    data.kind === "transcreate"
-      ? (data.locales?.length ?? 0)
-      : data.kind === "resize"
-        ? (data.formats?.length ?? 0)
-        : (data.count ?? 0);
+  const exportApproved = () =>
+    downloadJSON(`design-${pid}-approved.json`, {
+      design: data.title,
+      outputKind: data.outputKind,
+      approved: approved.map((v) => ({ id: v.id, title: v.data.title, changes: v.data.changes })),
+      note: "generate-once / render-many: each approved variation renders to all sizes at export",
+    });
 
   return (
     <div
       className={cn(
         "relative w-60 rounded-xl border bg-card shadow-sm",
         selected ? "border-primary/70 ring-2 ring-primary/30" : "border-border",
-        locked && "border-lock/50",
       )}
+      style={{ borderColor: selected ? undefined : `hsl(${hue} 45% 38% / 0.6)` }}
     >
-      <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
-
-      {isGenerating && (
-        <div className="absolute inset-0 z-20 grid place-items-center rounded-xl bg-background/65 backdrop-blur-[1px]">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-            <Loader2 className="size-4 animate-spin" /> Generating…
-          </div>
-        </div>
-      )}
-
       <div className="flex items-center gap-2 px-3 pt-3">
-        <span
-          className="grid size-6 shrink-0 place-items-center rounded-md"
-          style={{ background: `hsl(${hue} 50% 22%)`, color: `hsl(${hue} 75% 80%)` }}
-        >
-          <Icon className="size-3.5" />
+        <span className="grid size-6 shrink-0 place-items-center rounded-md" style={{ background: `hsl(${hue} 50% 22%)`, color: `hsl(${hue} 75% 82%)` }}>
+          <Layers className="size-3.5" />
         </span>
         <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">{data.title}</span>
-        {locked ? (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded border border-lock/40 px-1 py-0.5 text-[10px] font-medium text-lock">
-            <Lock className="size-2.5" /> Locked
-          </span>
-        ) : (
-          <StatusIcon className={cn("size-3.5 shrink-0", status.cls)} />
-        )}
-      </div>
-
-      <div className="grid gap-2 px-3 py-2">
-        {showThumbnail && (
-          <div
-            className="relative h-20 w-full overflow-hidden rounded-md"
-            style={{ background: `radial-gradient(130% 130% at 0% 0%, hsl(${hue} 55% 26%), hsl(${hue} 45% 10%))` }}
-          >
-            <div
-              className="absolute inset-0"
-              style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.14) 1px, transparent 1px)", backgroundSize: "14px 14px" }}
-            />
-          </div>
-        )}
-        <ProcessControls id={id} data={data} skills={skills} updateNodeData={updateNodeData} />
-      </div>
-
-      <div className="flex items-center gap-2 px-3 pb-2 text-[11px] text-muted-foreground">
-        <span className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5">
-          <span className="size-1.5 rounded-full" style={{ background: `hsl(${hue} 60% 62%)` }} />
-          {data.model ?? kindInfo[data.kind].defaultModel}
+        <span className="inline-flex shrink-0 items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] capitalize text-muted-foreground">
+          {isVideo ? <Film className="size-2.5" /> : <ImageIcon className="size-2.5" />}
+          {data.outputKind ?? "image"}
         </span>
-        {data.mode && <span className="capitalize">{data.mode}</span>}
-        {displayCount > 0 && <span className="ml-auto font-mono">×{displayCount}</span>}
+      </div>
+
+      <div
+        className="relative mx-3 mt-2 h-20 overflow-hidden rounded-md"
+        style={{ background: `radial-gradient(130% 130% at 0% 0%, hsl(${hue} 55% 26%), hsl(${hue} 45% 10%))` }}
+      >
+        <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.14) 1px, transparent 1px)", backgroundSize: "14px 14px" }} />
+        <span className="absolute bottom-1.5 left-1.5 rounded bg-background/55 px-1 py-0.5 text-[9px] text-muted-foreground backdrop-blur-sm">
+          master · single source of truth
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground">
+        <span className="font-mono">{layerCount} layers</span>
+        <span className="ml-auto font-mono text-success">{approved.length}/{variations.length} approved</span>
       </div>
 
       <div className="flex items-center gap-1 border-t border-border px-2 py-1.5">
         <button
-          onClick={regenerate}
-          disabled={locked}
-          title={locked ? "Brand-locked — regeneration disabled" : "Regenerate"}
-          className={cn(
-            "nodrag grid size-7 place-items-center rounded-md text-muted-foreground transition-colors",
-            locked ? "cursor-not-allowed opacity-40" : "hover:bg-accent hover:text-foreground",
-          )}
-        >
-          <RefreshCw className="size-3.5" />
-        </button>
-        <button
-          onClick={() => navigate(`/project/${pid}/editor/${id}`)}
-          title="Open in editor"
+          onClick={() => navigate(`/project/${pid}/editor/design`)}
+          title="Edit the design"
           className="nodrag grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <PenLine className="size-3.5" />
         </button>
-        {canVary && (
-          <div className="relative">
-            <button
-              onClick={() => setVaryOpen((o) => !o)}
-              title="Generate variations"
-              className="nodrag inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-accent"
-            >
-              <Sparkles className="size-3.5" /> Vary
-            </button>
-            {varyOpen && <VariationComposer masterId={id} onClose={() => setVaryOpen(false)} />}
-          </div>
-        )}
-        <div className="relative ml-auto">
-          <button
-            onClick={() => setMenuOpen((o) => !o)}
-            title="Transform"
-            className="nodrag inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            <Plus className="size-3.5" /> Transform
-          </button>
-          {menuOpen && <TransformMenu onSelect={spawn} onClose={() => setMenuOpen(false)} />}
-        </div>
+        <button
+          onClick={() => addVariation(id)}
+          title="New variation — composes every layer change you've authored"
+          className="nodrag inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground transition-opacity hover:opacity-90"
+        >
+          <Plus className="size-3.5" /> Variation
+        </button>
+        <button
+          onClick={approveAll}
+          disabled={variations.every((v) => v.data.status !== "done")}
+          title="Approve all ready variations"
+          className="nodrag ml-auto grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-success disabled:opacity-40"
+        >
+          <CheckCheck className="size-3.5" />
+        </button>
+        <button
+          onClick={exportApproved}
+          disabled={approved.length === 0}
+          title="Export approved variations"
+          className="nodrag grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
+        >
+          <Download className="size-3.5" />
+        </button>
       </div>
     </div>
   );
 }
 
-// ── Variant node (one produced scene branched off a set) ─────────────────
-function VariantNode({ id, data, selected }: { id: string; data: CanvasNodeData; selected?: boolean }) {
+// ── Layer (one per layer of the design; authors a change, feeds variations) ──
+function LayerNode({ id, data, selected }: { id: string; data: CanvasNodeData; selected?: boolean }) {
+  const updateNodeData = useGraphStore((s) => s.updateNodeData);
+  const composeVariation = useGraphStore((s) => s.composeVariation);
+  const edges = useGraphStore((s) => s.edges);
+  const navigate = useNavigate();
+  const { projectId } = useParams();
+  const pid = projectId ?? "demo";
+  const locked = Boolean(data.locked);
+  const kind = (data.layerKind as LayerKindTag) ?? "image";
+  const Icon = layerIcon[kind];
+  const hue = locked ? 38 : kindInfo.layer.hue;
+
+  // Re-render every variation this layer feeds when its change is committed.
+  const recomposeConnected = () => {
+    edges.filter((e) => e.source === id).forEach((e) => composeVariation(e.target));
+  };
+
+  return (
+    <div
+      className={cn(
+        "relative w-56 rounded-xl border bg-card shadow-sm",
+        locked && "border-lock/50",
+        !locked && selected ? "border-primary/70 ring-2 ring-primary/30" : "border-border",
+      )}
+    >
+      <Handle type="target" position={Position.Left} />
+      {!locked && <Handle type="source" position={Position.Right} />}
+
+      <div className="flex items-center gap-2 px-3 pt-2.5">
+        <span className="grid size-6 shrink-0 place-items-center rounded-md" style={{ background: `hsl(${hue} 45% 20%)`, color: `hsl(${hue} 70% 80%)` }}>
+          <Icon className="size-3.5" />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">{data.layerName ?? data.title}</span>
+        {locked ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded border border-lock/40 px-1 py-0.5 text-[10px] font-medium text-lock">
+            <Lock className="size-2.5" /> Locked
+          </span>
+        ) : (
+          <span className="shrink-0 rounded border border-border px-1 py-0.5 text-[9px] uppercase text-muted-foreground">{kind}</span>
+        )}
+      </div>
+
+      <div className="px-3 py-2">
+        {locked ? (
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            Locked in the editor — stays fixed in every variation.
+          </p>
+        ) : (
+          <>
+            <textarea
+              value={(data.change as string) ?? ""}
+              onChange={(e) => updateNodeData(id, { change: e.target.value })}
+              onBlur={recomposeConnected}
+              placeholder={changePlaceholder[kind]}
+              className="nodrag h-12 w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-[11px] leading-snug text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/60"
+            />
+            <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Sparkles className="size-2.5 text-primary" />
+              <span>Connect → a Variation to apply this change</span>
+              <button
+                onClick={() => navigate(`/project/${pid}/editor/design`)}
+                title="Edit this layer in the editor"
+                className="nodrag ml-auto grid size-5 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <PenLine className="size-3" />
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Variation (the composed pre-render of all connected layer changes) ────
+function VariationNode({ id, data, selected }: { id: string; data: CanvasNodeData; selected?: boolean }) {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const pid = projectId ?? "demo";
   const approveVariant = useGraphStore((s) => s.approveVariant);
   const rejectVariant = useGraphStore((s) => s.rejectVariant);
-  const reDeriveVariant = useGraphStore((s) => s.reDeriveVariant);
+  const composeVariation = useGraphStore((s) => s.composeVariation);
 
-  const hue = data.hue ?? 200;
+  const hue = data.hue ?? 175;
   const busy = data.status === "generating" || data.status === "queued";
   const approved = data.approval === "approved";
   const rejected = data.approval === "rejected";
-  const isText = Boolean(data.variantText);
+  const isVideo = data.outputKind === "video";
+  const changes = data.changes ?? [];
 
   return (
     <div
       className={cn(
-        "relative w-52 overflow-hidden rounded-xl border bg-card shadow-sm transition-opacity",
+        "relative w-56 overflow-hidden rounded-xl border bg-card shadow-sm transition-opacity",
         approved ? "border-success/60" : selected ? "border-primary/70 ring-2 ring-primary/30" : "border-border",
         rejected && "opacity-45",
       )}
     >
       <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
 
       <div
-        className="relative grid h-24 place-items-center px-3 text-center"
-        style={{
-          background: isText
-            ? "radial-gradient(130% 130% at 0% 0%, hsl(232 30% 22%), hsl(232 28% 9%))"
-            : `radial-gradient(130% 130% at 0% 0%, hsl(${hue} 55% 28%), hsl(${hue} 45% 10%))`,
-        }}
+        className="relative grid h-24 place-items-center"
+        style={{ background: `radial-gradient(130% 130% at 0% 0%, hsl(${hue} 55% 28%), hsl(${hue} 45% 10%))` }}
       >
-        {data.imageUrl && (
-          <img src={data.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        )}
-        <div
-          className="absolute inset-0 opacity-60"
-          style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)", backgroundSize: "13px 13px" }}
-        />
-        {isText && (
-          <span className="relative z-10 line-clamp-3 text-xs font-semibold leading-tight text-white">
-            {data.variantText}
+        {data.imageUrl && <img src={data.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+        <div className="absolute inset-0 opacity-60" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)", backgroundSize: "13px 13px" }} />
+        {isVideo && !busy && (
+          <span className="relative z-10 grid size-8 place-items-center rounded-full bg-background/55 text-foreground backdrop-blur-sm">
+            <Play className="size-3.5" />
           </span>
         )}
-        <span className="absolute left-1.5 top-1.5 rounded bg-background/60 px-1 py-0.5 font-mono text-[9px] text-foreground backdrop-blur-sm">
-          {data.delta}
-        </span>
-        <span className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 rounded bg-background/50 px-1 py-0.5 text-[8px] text-muted-foreground backdrop-blur-sm">
-          <Lock className="size-2 text-lock" /> logo
+        <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded bg-background/60 px-1 py-0.5 text-[8px] text-muted-foreground backdrop-blur-sm">
+          {isVideo ? <Film className="size-2" /> : <ImageIcon className="size-2" />} {data.outputKind ?? "image"}
         </span>
         {busy && (
-          <span className="absolute inset-0 z-20 grid place-items-center bg-background/40 backdrop-blur-[1px]">
-            <Loader2 className="size-4 animate-spin text-primary" />
+          <span className="absolute inset-0 z-20 grid place-items-center bg-background/45 backdrop-blur-[1px]">
+            <span className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
+              <Loader2 className="size-4 animate-spin" /> Pre-rendering…
+            </span>
           </span>
         )}
         {approved && (
@@ -283,33 +275,47 @@ function VariantNode({ id, data, selected }: { id: string; data: CanvasNodeData;
             <Check className="size-2.5" />
           </span>
         )}
-        {data.stale && (
-          <span className="absolute left-1.5 bottom-1.5 z-20 rounded bg-lock/80 px-1 py-0.5 text-[8px] font-medium text-lock-foreground">
-            stale
-          </span>
+        {data.stale && !busy && (
+          <span className="absolute bottom-1.5 left-1.5 z-20 rounded bg-lock/80 px-1 py-0.5 text-[8px] font-medium text-lock-foreground">stale</span>
         )}
+      </div>
+
+      <div className="px-2.5 py-2">
+        <p className="truncate text-[11px] font-medium text-foreground" title={data.title}>{data.title}</p>
+        <div className="mt-1 grid gap-0.5">
+          {changes.length ? (
+            changes.map((c) => (
+              <div key={c.layerId} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <span className="shrink-0 rounded bg-secondary px-1 py-0.5 text-[8px] uppercase">{c.layerName}</span>
+                <span className="truncate" title={c.change}>{c.change}</span>
+              </div>
+            ))
+          ) : (
+            <p className="text-[10px] text-muted-foreground">Connect a layer with a change →</p>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-0.5 border-t border-border px-1.5 py-1">
         <button
           onClick={() => navigate(`/project/${pid}/editor/${id}`)}
-          title="Open in editor"
+          title="Open this variation in the editor"
           className="nodrag grid size-6 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <PenLine className="size-3" />
         </button>
         <button
-          onClick={() => downloadJSON(`${data.delta ?? id}.json`, { variant: id, ...data })}
+          onClick={() => downloadJSON(`${data.title || id}.json`, { variation: id, ...data })}
           disabled={!approved}
-          title={approved ? "Export this variant" : "Approve to export"}
+          title={approved ? "Export this variation" : "Approve to export"}
           className="nodrag grid size-6 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
         >
           <Download className="size-3" />
         </button>
         {data.stale && !busy && (
           <button
-            onClick={() => reDeriveVariant(id)}
-            title="Re-derive from the updated master"
+            onClick={() => composeVariation(id)}
+            title="Re-render from the updated design"
             className="nodrag grid size-6 place-items-center rounded text-lock hover:bg-accent"
           >
             <RefreshCw className="size-3" />
@@ -320,20 +326,14 @@ function VariantNode({ id, data, selected }: { id: string; data: CanvasNodeData;
             <button
               onClick={() => approveVariant(id)}
               title="Approve"
-              className={cn(
-                "nodrag grid size-6 place-items-center rounded hover:bg-accent",
-                approved ? "text-success" : "text-muted-foreground hover:text-success",
-              )}
+              className={cn("nodrag grid size-6 place-items-center rounded hover:bg-accent", approved ? "text-success" : "text-muted-foreground hover:text-success")}
             >
               <Check className="size-3.5" />
             </button>
             <button
               onClick={() => rejectVariant(id)}
               title="Reject"
-              className={cn(
-                "nodrag grid size-6 place-items-center rounded hover:bg-accent",
-                rejected ? "text-destructive" : "text-muted-foreground hover:text-destructive",
-              )}
+              className={cn("nodrag grid size-6 place-items-center rounded hover:bg-accent", rejected ? "text-destructive" : "text-muted-foreground hover:text-destructive")}
             >
               <X className="size-3.5" />
             </button>
@@ -341,206 +341,6 @@ function VariantNode({ id, data, selected }: { id: string; data: CanvasNodeData;
         )}
       </div>
     </div>
-  );
-}
-
-// ── Variation-set node (the layer-variation job) ─────────────────────────
-function VariationSetNode({ id, data, selected }: { id: string; data: CanvasNodeData; selected?: boolean }) {
-  const approveAllInSet = useGraphStore((s) => s.approveAllInSet);
-  const allNodes = useGraphStore((s) => s.nodes);
-  const edges = useGraphStore((s) => s.edges);
-  const variants = allNodes.filter((n) => n.data.kind === "variant" && n.data.setId === id);
-
-  const done = variants.filter((v) => v.data.status === "done").length;
-  const approved = variants.filter((v) => v.data.approval === "approved");
-  const hue = data.hue ?? 175;
-  // Resolve varied-layer names from the master's mirrored manifest.
-  const masterId = edges.find((e) => e.target === id)?.source;
-  const layers = allNodes.find((n) => n.id === masterId)?.data.layers ?? [];
-  const layerName = (lid: string) => layers.find((l) => l.id === lid)?.name ?? lid;
-  const variableLayers = data.variableLayers ?? [];
-  const slotNames = variableLayers.map((vl) => layerName(vl.layerId)).join(" · ");
-  const total = data.count ?? variants.length;
-
-  const exportApproved = () =>
-    downloadJSON(`variations-${id}.json`, {
-      set: id,
-      variableLayers: data.variableLayers,
-      outputKind: data.outputKind,
-      skillId: data.skillId,
-      approved: approved.map((v) => ({ id: v.id, delta: v.data.delta, layer: v.data.slotId })),
-      note: "generate-once / render-many: each approved scene renders to all sizes at export",
-    });
-
-  return (
-    <div
-      className={cn(
-        "relative w-56 rounded-xl border bg-card shadow-sm",
-        selected ? "border-primary/70 ring-2 ring-primary/30" : "border-border",
-      )}
-      style={{ borderColor: selected ? undefined : `hsl(${hue} 40% 35% / 0.5)` }}
-    >
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
-
-      <div className="flex items-center gap-2 px-3 pt-3">
-        <span className="grid size-6 shrink-0 place-items-center rounded-md" style={{ background: `hsl(${hue} 50% 22%)`, color: `hsl(${hue} 75% 80%)` }}>
-          <Boxes className="size-3.5" />
-        </span>
-        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">Variations</span>
-        <span className="font-mono text-[10px] text-muted-foreground">{total}</span>
-      </div>
-
-      <div className="px-3 py-2">
-        <p className="truncate text-[11px] text-muted-foreground" title={slotNames}>
-          {slotNames || "—"}
-        </p>
-        <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-          <span className="rounded border border-border px-1.5 py-0.5 capitalize">{data.outputKind ?? "image"}</span>
-          {data.skillId && <span className="rounded border border-primary/40 px-1.5 py-0.5 text-primary">skill</span>}
-          <span className="ml-auto text-success">{approved.length}/{variants.length} approved</span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-1 border-t border-border px-2 py-1.5">
-        <button
-          onClick={() => approveAllInSet(id)}
-          disabled={done === 0}
-          title="Approve all ready variants"
-          className="nodrag inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-success disabled:opacity-40"
-        >
-          <Check className="size-3.5" /> Approve all
-        </button>
-        <button
-          onClick={exportApproved}
-          disabled={approved.length === 0}
-          title="Export approved variants"
-          className="nodrag ml-auto inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40"
-        >
-          <Download className="size-3.5" /> Export
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// Body controls matched to each process kind — no more "prompt" on a resize.
-function ProcessControls({
-  id,
-  data,
-  skills,
-  updateNodeData,
-}: {
-  id: string;
-  data: CanvasNodeData;
-  skills: { id: string; name: string }[];
-  updateNodeData: (id: string, patch: Partial<CanvasNodeData>) => void;
-}) {
-  const selectCls =
-    "nodrag min-w-0 flex-1 rounded border border-border bg-background px-1.5 py-1 text-[11px] text-foreground outline-none focus:border-primary/60";
-  const chipCls =
-    "nodrag rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:bg-accent data-[active=true]:border-primary/50 data-[active=true]:bg-accent data-[active=true]:text-foreground";
-
-  const skillRow = (
-    <label className="flex items-center gap-1.5">
-      <Sparkles className="size-3 shrink-0 text-primary" />
-      <select
-        value={data.skillId ?? ""}
-        onChange={(e) => updateNodeData(id, { skillId: e.target.value || null })}
-        title="MD skill — scopes the AI for this process"
-        className={selectCls}
-      >
-        <option value="">No skill</option>
-        {skills.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-
-  const promptBox = (placeholder: string) => (
-    <textarea
-      className="nodrag h-14 w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/60"
-      placeholder={placeholder}
-      value={data.prompt ?? ""}
-      onChange={(e) => updateNodeData(id, { prompt: e.target.value })}
-    />
-  );
-
-  if (data.kind === "brief") return promptBox("Describe the campaign brief…");
-
-  if (data.kind === "transcreate") {
-    const locales = data.locales ?? [];
-    const toggle = (l: string) =>
-      updateNodeData(id, {
-        locales: locales.includes(l) ? locales.filter((x) => x !== l) : [...locales, l],
-      });
-    return (
-      <>
-        <div>
-          <p className="text-meta mb-1 uppercase">Locales</p>
-          <div className="flex flex-wrap gap-1">
-            {LOCALE_OPTIONS.map((l) => (
-              <button key={l} onClick={() => toggle(l)} data-active={locales.includes(l)} className={chipCls}>
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
-        {skillRow}
-      </>
-    );
-  }
-
-  if (data.kind === "resize") {
-    const formats = data.formats ?? [];
-    const toggle = (f: string) =>
-      updateNodeData(id, {
-        formats: formats.includes(f) ? formats.filter((x) => x !== f) : [...formats, f],
-      });
-    return (
-      <div>
-        <p className="text-meta mb-1 uppercase">Output sizes</p>
-        <div className="flex flex-wrap gap-1">
-          {Object.keys(FORMATS).map((f) => (
-            <button key={f} onClick={() => toggle(f)} data-active={formats.includes(f)} className={chipCls}>
-              {f}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (data.kind === "animate") {
-    return (
-      <label className="flex items-center gap-1.5">
-        <Play className="size-3 shrink-0 text-primary" />
-        <select
-          value={data.preset ?? ""}
-          onChange={(e) => updateNodeData(id, { preset: e.target.value || undefined })}
-          title="Motion preset (Tier-1 CE.SDK)"
-          className={selectCls}
-        >
-          <option value="">Motion preset…</option>
-          {MOTION_PRESETS.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-      </label>
-    );
-  }
-
-  // image · picture-idea · video · copy
-  return (
-    <>
-      {promptBox(data.kind === "copy" ? "What should this copy say?" : "Describe the image to generate…")}
-      {skillRow}
-    </>
   );
 }
 
