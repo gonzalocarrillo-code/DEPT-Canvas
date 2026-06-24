@@ -45,6 +45,7 @@ export function EditorScreen() {
             title: node.data.title,
             locked: Boolean(node.data.locked),
             mode: node.data.kind === "animate" ? "animate" : "design",
+            layers: node.data.layers,
           }
         : { title: "Scene" },
     );

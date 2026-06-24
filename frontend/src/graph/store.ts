@@ -10,37 +10,42 @@ import {
 import type { CanvasNode, CanvasEdge, CanvasNodeData, NodeKind } from "./types";
 import { kindInfo } from "./types";
 import { seedGraph } from "./seed";
-import { MASTER_SLOTS, hueFor, fakeText, type AssetSlot } from "../batch/batchStore";
+import { hueFor } from "../batch/batchStore";
+import { defaultLayerManifest } from "../editor/scene";
+import type { LayerManifestEntry, VariableLayer, VariationAxis } from "./types";
 import { getAiStatus, requestGenerate } from "../api/ai";
 import { useSkillsStore } from "../skills/skills";
 
 export interface VariationConfig {
-  targetSlotIds: string[];
-  slotInstructions: Record<string, string>;
-  mode: "generate" | "transcreate";
-  count: number;
-  locales: string[];
+  variableLayers: VariableLayer[];
+  outputKind: "image" | "video";
   skillId: string | null;
 }
 
-// Build the generation prompt for one variant. The MD skill body is injected for
-// this asset only (scopes the AI per the skill), matching the variation contract.
-function buildVariantPrompt(
-  slot: AssetSlot,
-  instr: string,
-  locale: string | undefined,
+const PREVIEW_PER_LANE = 6; // cap spawned variant nodes per layer-lane to keep the canvas bounded
+
+// Expand a variation axis into concrete values. A `values` axis is the list as-is;
+// a `prompt` axis is expanded locally here (deterministic stub) — real semantic
+// expansion is the orchestration mapping agent (needs a key), wired later.
+function expandAxis(axis: VariationAxis): string[] {
+  if (axis.kind === "values") return axis.values.map((v) => v.trim()).filter(Boolean);
+  const n = Math.max(1, Math.min(200, axis.expandTo));
+  const label = (axis.instruction || "variant").trim().slice(0, 28);
+  return Array.from({ length: n }, (_, i) => `${label} ${i + 1}`);
+}
+
+// Per-layer generation prompt; the MD skill body scopes the AI for this layer only.
+function buildLayerPrompt(
+  layer: LayerManifestEntry,
+  value: string,
   skillBody?: string,
 ): { kind: string; prompt: string } {
   const base =
-    slot.type === "image"
-      ? `On-brand ${slot.name.toLowerCase()} for an ad creative. ${instr || slot.hint}.`
-      : `Write the ${slot.name.toLowerCase()} for an ad creative. ${instr || ""}`.trim();
-  const loc = locale
-    ? ` Target locale: ${locale}; transcreate (preserve intent and CTA energy, do not translate literally).`
-    : "";
-  const skillText = skillBody ? `\n\n--- Apply this skill (for this asset only) ---\n${skillBody}` : "";
-  const kind = slot.type === "text" ? (locale ? "transcreate" : "copy") : "image";
-  return { kind, prompt: `${base}${loc}${skillText}` };
+    layer.kind === "text"
+      ? `Write the ${layer.name} for an ad creative: ${value}.`
+      : `On-brand ${layer.name} for an ad creative — ${value}.`;
+  const skillText = skillBody ? `\n\n--- Apply this skill (for this layer only) ---\n${skillBody}` : "";
+  return { kind: layer.kind === "text" ? "copy" : "image", prompt: `${base}${skillText}` };
 }
 
 function makeId(): string {
@@ -194,23 +199,30 @@ export const useGraphStore = create<GraphState>()((set, get) => {
       nodes: [...s.nodes.map((n) => ({ ...n, selected: false })), ...pasted],
     }));
   },
-  // Branch a multi-slot variation job off a master: one variation-set node +
-  // N variant child nodes (one lane per slot), each an editable scene.
+  // Branch a layer-variation job off a master: one variation-set node + N variant
+  // child nodes (one lane per varied layer). Locked layers can NEVER vary (the lock
+  // toggled in the editor is enforced here in code); all other layers are inherited
+  // at render time (generate-once / render-many, never baked).
   createVariationSet: (masterId, config) => {
     const master = get().nodes.find((n) => n.id === masterId);
     if (!master) return;
-    // Locks enforced: drop any locked slot before it can become a varied axis.
-    const slots = config.targetSlotIds
-      .map((id) => MASTER_SLOTS.find((s) => s.id === id))
-      .filter((s): s is AssetSlot => Boolean(s) && !s!.locked)
-      .slice(0, 3);
-    if (!slots.length) return;
+    const layers = (master.data.layers as LayerManifestEntry[] | undefined) ?? defaultLayerManifest();
+    const skillBody = useSkillsStore.getState().getSkill(config.skillId)?.body;
+
+    const lanes = config.variableLayers
+      .map((vl) => ({ layer: layers.find((l) => l.id === vl.layerId), values: expandAxis(vl.axis) }))
+      .filter(
+        (j): j is { layer: LayerManifestEntry; values: string[] } =>
+          Boolean(j.layer) && !j.layer!.locked && j.values.length > 0,
+      );
+    if (!lanes.length) return;
     commit(snapshot());
 
     const px = master.position.x;
     const py = master.position.y;
     const setId = `vset-${makeId()}`;
     const setInfo = kindInfo["variation-set"];
+    const total = lanes.reduce((s, l) => s + l.values.length, 0);
     const setNode: CanvasNode = {
       id: setId,
       type: "canvasNode",
@@ -221,11 +233,11 @@ export const useGraphStore = create<GraphState>()((set, get) => {
         status: "done",
         model: setInfo.defaultModel,
         hue: setInfo.hue,
-        targetSlotIds: slots.map((s) => s.id),
-        slotInstructions: config.slotInstructions,
+        variableLayers: config.variableLayers,
+        outputKind: config.outputKind,
         skillId: config.skillId,
-        variationMode: config.mode,
-        locales: config.locales,
+        count: total,
+        collapsed: total > PREVIEW_PER_LANE * lanes.length,
       },
     };
 
@@ -233,38 +245,32 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     const edges: CanvasEdge[] = [{ id: `e-${masterId}-${setId}`, source: masterId, target: setId }];
     const COL = 280;
     const ROW = 230;
-    const laneBaseY = py - ((slots.length - 1) * ROW) / 2;
-    const skillBody = useSkillsStore.getState().getSkill(config.skillId)?.body;
+    const laneBaseY = py - ((lanes.length - 1) * ROW) / 2;
     const jobs: { id: string; kind: string; prompt: string }[] = [];
     let gi = 0;
-    slots.forEach((slot, lane) => {
-      const effMode = slot.type === "text" ? config.mode : "generate";
-      const units =
-        effMode === "transcreate"
-          ? config.locales
-          : Array.from({ length: config.count }, (_, i) => i);
-      const instr = config.slotInstructions[slot.id] ?? "";
-      units.forEach((unit, i) => {
-        const locale = effMode === "transcreate" ? (unit as string) : undefined;
-        const delta = `${slot.name} · ${locale ?? `v${i + 1}`}`;
+    lanes.forEach((lane, laneIdx) => {
+      const isText = lane.layer.kind === "text";
+      // Cap spawned nodes per lane; the set node's count reflects the full batch.
+      lane.values.slice(0, PREVIEW_PER_LANE).forEach((value, i) => {
+        const delta = `${lane.layer.name} · ${value}`;
         const vid = `variant-${makeId()}`;
-        const { kind, prompt } = buildVariantPrompt(slot, instr, locale, skillBody);
+        const { kind, prompt } = buildLayerPrompt(lane.layer, value, skillBody);
         nodes.push({
           id: vid,
           type: "canvasNode",
-          position: { x: px + 680 + i * COL, y: laneBaseY + lane * ROW },
+          position: { x: px + 680 + i * COL, y: laneBaseY + laneIdx * ROW },
           data: {
             kind: "variant",
             title: delta,
             status: "generating",
-            model: slot.type === "text" ? "gpt-5.4-mini" : "gpt-image-2",
+            model: isText ? "gpt-5.4-mini" : "gpt-image-2",
             hue: hueFor(gi),
             setId,
-            slotId: slot.id,
+            slotId: lane.layer.id,
             delta,
             approval: "pending",
-            // Simulated content is the fallback; replaced when the AI gateway is configured.
-            variantText: slot.type === "text" ? fakeText(slot, instr, i, locale) : undefined,
+            outputKind: config.outputKind,
+            variantText: isText ? value : undefined,
           },
         });
         edges.push({ id: `e-${setId}-${vid}`, source: setId, target: vid, label: delta });
@@ -274,8 +280,6 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     });
 
     set((s) => ({ nodes: [...s.nodes, ...nodes], edges: [...s.edges, ...edges] }));
-    // Generate through the AI gateway when configured; otherwise keep the simulated
-    // content. One status check, then resolve each variant generating → done.
     getAiStatus()
       .then((st) => jobs.forEach((j, idx) => generateInto(j.id, j.kind, j.prompt, st.configured, 700 + idx * 160)))
       .catch(() => jobs.forEach((j, idx) => generateInto(j.id, j.kind, j.prompt, false, 700 + idx * 160)));
@@ -308,25 +312,29 @@ export const useGraphStore = create<GraphState>()((set, get) => {
       ),
     }));
   },
-  // Re-run ONLY this variant's varied axis on the current master; clears stale.
-  // Never touches locked props — the variant only ever carries the swapped asset.
+  // Re-run ONLY this variant's varied layer on the current master; clears stale.
+  // Never touches locked layers — the variant only ever carries the swapped layer.
   reDeriveVariant: (id) => {
     const v = get().nodes.find((n) => n.id === id);
     if (!v || v.data.kind !== "variant") return;
     const setNode = get().nodes.find((n) => n.id === v.data.setId);
-    const slot = MASTER_SLOTS.find((s) => s.id === v.data.slotId);
-    if (!setNode || !slot) {
+    if (!setNode) {
       get().updateNodeData(id, { stale: false });
       return;
     }
-    const cfg = setNode.data;
-    const instr = (cfg.slotInstructions ?? {})[slot.id] ?? "";
-    const locale =
-      cfg.variationMode === "transcreate" && slot.type === "text"
-        ? v.data.delta?.split("·").pop()?.trim()
-        : undefined;
-    const skillBody = useSkillsStore.getState().getSkill(cfg.skillId ?? null)?.body;
-    const { kind, prompt } = buildVariantPrompt(slot, instr, locale, skillBody);
+    const masterId = get().edges.find((e) => e.target === setNode.id)?.source;
+    const master = get().nodes.find((n) => n.id === masterId);
+    const layers = (master?.data.layers as LayerManifestEntry[] | undefined) ?? defaultLayerManifest();
+    const layer = layers.find((l) => l.id === v.data.slotId);
+    // Layer gone or now locked in the editor → can't (re)vary it; just clear stale.
+    if (!layer || layer.locked) {
+      get().updateNodeData(id, { stale: false });
+      return;
+    }
+    // The concrete value for this lane is the tail of the "Layer · value" delta.
+    const value = v.data.variantText ?? v.data.delta?.split("·").pop()?.trim() ?? "";
+    const skillBody = useSkillsStore.getState().getSkill(setNode.data.skillId ?? null)?.body;
+    const { kind, prompt } = buildLayerPrompt(layer, value, skillBody);
     get().updateNodeData(id, { status: "generating", stale: false, approval: "pending" });
     getAiStatus()
       .then((st) => generateInto(id, kind, prompt, st.configured, 600))

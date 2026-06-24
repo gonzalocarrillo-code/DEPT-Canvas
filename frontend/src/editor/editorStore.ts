@@ -14,6 +14,17 @@ import { EFFECT_CATALOG, FORMATS } from "./types";
 import { sampleScene } from "./scene";
 import { buildPreset } from "./motionPresets";
 import { useGraphStore } from "../graph/store";
+import type { LayerManifestEntry } from "../graph/types";
+
+// The lock/identity slice the graph needs — shape→graphic so locks/selectors align.
+function manifestOf(layers: Layer[]): LayerManifestEntry[] {
+  return layers.map((l) => ({
+    id: l.id,
+    name: l.name,
+    kind: l.kind === "shape" ? "graphic" : l.kind,
+    locked: l.locked,
+  }));
+}
 
 function makeId(): string {
   try {
@@ -49,6 +60,7 @@ export interface SceneSeed {
   title?: string;
   locked?: boolean;
   mode?: EditorMode;
+  layers?: LayerManifestEntry[];
 }
 
 interface EditorState {
@@ -76,6 +88,7 @@ interface EditorState {
   snap: (tag?: string) => void;
   endInteraction: () => void;
   markSaved: () => void;
+  publishManifest: () => void;
   undo: () => void;
   redo: () => void;
   load: (sceneId: string, seed?: SceneSeed) => void;
@@ -158,6 +171,13 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   },
   endInteraction: () => set({ histTag: null }),
   markSaved: () => set({ dirty: false }),
+  // Mirror the design's real layers + per-layer locks onto the graph node, so the
+  // graph variation sees this exact design (lock in editor → locked in graph).
+  publishManifest: () => {
+    const sid = get().sceneId;
+    if (!sid) return;
+    useGraphStore.getState().updateNodeData(sid, { layers: manifestOf(get().layers) });
+  },
   undo: () => {
     const s = get();
     if (!s.past.length) return;
@@ -218,7 +238,15 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
         dirty: false,
       });
     } else {
-      const layers = locked ? sampleScene().map((l) => ({ ...l, locked: true })) : sampleScene();
+      // Seed real per-layer locks from the graph node's manifest (not one flag
+      // applied to every layer); fall back to the scene-level locked flag.
+      const base = sampleScene();
+      const manifest = seed?.layers;
+      const layers = manifest
+        ? base.map((l) => ({ ...l, locked: manifest.find((m) => m.id === l.id)?.locked ?? l.locked }))
+        : locked
+          ? base.map((l) => ({ ...l, locked: true }))
+          : base;
       set({
         sceneId,
         sceneCache: cache,
@@ -252,6 +280,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   toggleLock: (id) => {
     get().snap();
     set({ layers: get().layers.map((l) => (l.id === id ? { ...l, locked: !l.locked } : l)) });
+    get().publishManifest();
   },
   addLayer: (kind) => {
     get().snap();
@@ -266,6 +295,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       layer = { ...common, kind: "shape", name: "Shape", fill: "#6f66e8", radius: 12 };
     }
     set({ layers: [...get().layers, layer], selectedId: id, selectedKeyframe: null });
+    get().publishManifest();
   },
   importScene: (scene) => {
     get().snap();
@@ -289,6 +319,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       format,
       mode: "design",
     });
+    get().publishManifest();
   },
   addShape: (shapeType) => {
     get().snap();
@@ -322,6 +353,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       strokeWidth: shapeType === "line" ? 4 : 0,
     };
     set({ layers: [...get().layers, layer], selectedId: id, selectedKeyframe: null });
+    get().publishManifest();
   },
   reorderLayer: (id, dir) => {
     get().snap();
@@ -351,6 +383,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
         selectedKeyframe: s.selectedId === id ? null : s.selectedKeyframe,
       };
     });
+    get().publishManifest();
   },
   duplicateLayer: (id) => {
     const l = get().layers.find((x) => x.id === id);

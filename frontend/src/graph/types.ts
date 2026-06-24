@@ -15,6 +15,26 @@ export type NodeKind =
 export type NodeStatus = "idle" | "queued" | "generating" | "done" | "error";
 export type VariantApproval = "pending" | "approved" | "rejected";
 
+// The design's real layers + per-layer lock state, mirrored from the editor onto
+// the graph node so the variation flow varies REAL layers and honors REAL locks.
+export interface LayerManifestEntry {
+  id: string;
+  name: string;
+  kind: "text" | "image" | "graphic";
+  locked: boolean;
+}
+
+// How a layer is varied: an explicit value list, or a free-text prompt expanded
+// to N values (unlimited — "20 anime styles", "any market").
+export type VariationAxis =
+  | { kind: "values"; values: string[] }
+  | { kind: "prompt"; instruction: string; expandTo: number };
+
+export interface VariableLayer {
+  layerId: string;
+  axis: VariationAxis;
+}
+
 export interface CanvasNodeData {
   kind: NodeKind;
   title: string;
@@ -33,10 +53,12 @@ export interface CanvasNodeData {
   locales?: string[]; // transcreate
   formats?: string[]; // resize
   preset?: string; // animate (motion preset id)
+  // ── design ↔ graph: the master node mirrors the editor scene's real layers ──
+  layers?: LayerManifestEntry[];
   // ── variation-set (the job node) ──
-  targetSlotIds?: string[];
-  slotInstructions?: Record<string, string>;
-  variationMode?: "generate" | "transcreate";
+  variableLayers?: VariableLayer[];
+  outputKind?: "image" | "video";
+  collapsed?: boolean;
   // ── variant (one produced scene branched off a set) ──
   setId?: string;
   slotId?: string;

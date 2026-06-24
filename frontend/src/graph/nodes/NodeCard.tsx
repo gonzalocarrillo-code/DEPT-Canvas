@@ -29,7 +29,7 @@ import { kindInfo } from "../types";
 import { useGraphStore } from "../store";
 import { TransformMenu } from "../TransformMenu";
 import { VariationComposer } from "../VariationComposer";
-import { MASTER_SLOTS, LOCALE_OPTIONS } from "@/batch/batchStore";
+import { LOCALE_OPTIONS } from "@/batch/batchStore";
 import { useSkillsStore } from "@/skills/skills";
 import { FORMATS } from "@/editor/types";
 import { MOTION_PRESETS } from "@/editor/motionPresets";
@@ -344,26 +344,31 @@ function VariantNode({ id, data, selected }: { id: string; data: CanvasNodeData;
   );
 }
 
-// ── Variation-set node (the multi-slot job) ──────────────────────────────
+// ── Variation-set node (the layer-variation job) ─────────────────────────
 function VariationSetNode({ id, data, selected }: { id: string; data: CanvasNodeData; selected?: boolean }) {
   const approveAllInSet = useGraphStore((s) => s.approveAllInSet);
   const allNodes = useGraphStore((s) => s.nodes);
+  const edges = useGraphStore((s) => s.edges);
   const variants = allNodes.filter((n) => n.data.kind === "variant" && n.data.setId === id);
 
   const done = variants.filter((v) => v.data.status === "done").length;
   const approved = variants.filter((v) => v.data.approval === "approved");
   const hue = data.hue ?? 175;
-  const slotNames = (data.targetSlotIds ?? [])
-    .map((sid) => MASTER_SLOTS.find((s) => s.id === sid)?.name ?? sid)
-    .join(" · ");
+  // Resolve varied-layer names from the master's mirrored manifest.
+  const masterId = edges.find((e) => e.target === id)?.source;
+  const layers = allNodes.find((n) => n.id === masterId)?.data.layers ?? [];
+  const layerName = (lid: string) => layers.find((l) => l.id === lid)?.name ?? lid;
+  const variableLayers = data.variableLayers ?? [];
+  const slotNames = variableLayers.map((vl) => layerName(vl.layerId)).join(" · ");
+  const total = data.count ?? variants.length;
 
   const exportApproved = () =>
     downloadJSON(`variations-${id}.json`, {
       set: id,
-      slots: data.targetSlotIds,
-      mode: data.variationMode,
+      variableLayers: data.variableLayers,
+      outputKind: data.outputKind,
       skillId: data.skillId,
-      approved: approved.map((v) => ({ id: v.id, delta: v.data.delta, slot: v.data.slotId })),
+      approved: approved.map((v) => ({ id: v.id, delta: v.data.delta, layer: v.data.slotId })),
       note: "generate-once / render-many: each approved scene renders to all sizes at export",
     });
 
@@ -383,7 +388,7 @@ function VariationSetNode({ id, data, selected }: { id: string; data: CanvasNode
           <Boxes className="size-3.5" />
         </span>
         <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">Variations</span>
-        <span className="font-mono text-[10px] text-muted-foreground">{variants.length}</span>
+        <span className="font-mono text-[10px] text-muted-foreground">{total}</span>
       </div>
 
       <div className="px-3 py-2">
@@ -391,7 +396,7 @@ function VariationSetNode({ id, data, selected }: { id: string; data: CanvasNode
           {slotNames || "—"}
         </p>
         <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-          <span className="rounded border border-border px-1.5 py-0.5 capitalize">{data.variationMode}</span>
+          <span className="rounded border border-border px-1.5 py-0.5 capitalize">{data.outputKind ?? "image"}</span>
           {data.skillId && <span className="rounded border border-primary/40 px-1.5 py-0.5 text-primary">skill</span>}
           <span className="ml-auto text-success">{approved.length}/{variants.length} approved</span>
         </div>

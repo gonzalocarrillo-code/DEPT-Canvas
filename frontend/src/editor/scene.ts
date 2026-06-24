@@ -1,4 +1,16 @@
 import type { Layer } from "./types";
+import type { LayerManifestEntry } from "@/graph/types";
+
+// The default design's layer manifest (id/name/kind/locked) — what the graph
+// variation reads for a master that hasn't been opened/edited in the editor yet.
+export function defaultLayerManifest(): LayerManifestEntry[] {
+  return sampleScene().map((l) => ({
+    id: l.id,
+    name: l.name,
+    kind: l.kind === "shape" ? "graphic" : l.kind,
+    locked: l.locked,
+  }));
+}
 
 // A real, editable sample scene so the editor is usable immediately (before the
 // CE.SDK engine is connected). The "Logo lockup" is brand-locked to demonstrate locks.
