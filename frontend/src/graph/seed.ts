@@ -1,9 +1,7 @@
 import type { CanvasNode, CanvasEdge, LayerChange, LayerManifestEntry } from "./types";
 import { kindInfo } from "./types";
 import { defaultLayerManifest } from "../editor/scene";
-
-const COL = 320; // horizontal gap between columns
-const ROW = 132; // vertical gap between layer nodes
+import { layerCenterY, layoutLayer, variationSlot } from "./layout";
 
 export interface DesignInput {
   title?: string;
@@ -18,11 +16,10 @@ export interface DesignInput {
 export function buildDesignGraph(design: DesignInput): { nodes: CanvasNode[]; edges: CanvasEdge[] } {
   const layers = design.layers;
   const outputKind = design.outputKind ?? "image";
-  const colY = ((layers.length - 1) * ROW) / 2;
   const designNode: CanvasNode = {
     id: "design",
     type: "canvasNode",
-    position: { x: 0, y: colY },
+    position: { x: 0, y: layerCenterY(layers.length) },
     data: {
       kind: "design",
       title: design.title || "Design",
@@ -40,7 +37,7 @@ export function buildDesignGraph(design: DesignInput): { nodes: CanvasNode[]; ed
     nodes.push({
       id,
       type: "canvasNode",
-      position: { x: COL, y: i * ROW },
+      position: layoutLayer(i),
       data: {
         kind: "layer",
         title: l.name,
@@ -89,7 +86,7 @@ export function seedGraph(_projectId: string): { nodes: CanvasNode[]; edges: Can
     nodes.push({
       id: vid,
       type: "canvasNode",
-      position: { x: COL * 2 + 60, y: k * ROW },
+      position: variationSlot(k, markets.length, layerCenterY(manifest.length)),
       data: { kind: "variation", title: m.name, status: "done", outputKind: "image", hue: m.hue, changes, approval: "pending", axisIndex: m.idx },
     });
     edges.push(

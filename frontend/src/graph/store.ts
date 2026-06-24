@@ -13,14 +13,11 @@ import { seedGraph, buildDesignGraph, type DesignInput } from "./seed";
 import { hueFor } from "../batch/batchStore";
 import { getAiStatus, requestGenerate } from "../api/ai";
 import { useSkillsStore } from "../skills/skills";
+import { MAX_VARIATIONS, layerCenterY, variationSlot } from "./layout";
 
 // Demo projects from the dashboard open with a populated graph; everything else is
 // "editor-first" and stays gated until the user pushes a design from the editor.
 const DEMO_PROJECT_IDS = ["aurora-fw", "northwind", "lumen-drop", "vela-aon", "dept-reels", "kontur-tz"];
-
-const COL = 320;
-const ROW = 132;
-const MAX_VARIATIONS = 24; // cost/perf ceiling on a single fan-out
 
 // A layer change can hold several values, one per line — each becomes one aligned
 // variation (e.g. "translate to Chinese" / "translate to Spanish").
@@ -308,6 +305,8 @@ export const useGraphStore = create<GraphState>()((set, get) => {
       commit(snapshot());
       const outputKind = (design.data.outputKind as "image" | "video") ?? "image";
       const existingVars = get().nodes.filter((n) => n.data.kind === "variation").length;
+      const layerCount = (design.data.layers as unknown[] | undefined)?.length ?? get().nodes.filter((n) => n.data.kind === "layer").length;
+      const centerY = layerCenterY(layerCount);
       const layerNodes = get().nodes.filter(
         (n) => n.data.kind === "layer" && !n.data.locked && splitValues(n.data.change as string).length > 0,
       );
@@ -318,7 +317,7 @@ export const useGraphStore = create<GraphState>()((set, get) => {
         const node: CanvasNode = {
           id: vid,
           type: "canvasNode",
-          position: { x: COL * 2 + 60, y: existingVars * ROW },
+          position: variationSlot(existingVars, existingVars + 1, centerY),
           data: { kind: "variation", title: "Variation", status: "idle", outputKind, hue: hueFor(existingVars), changes: [], approval: "pending", axisIndex: 0 },
         };
         set((s) => ({ nodes: [...s.nodes, node] }));
@@ -344,7 +343,7 @@ export const useGraphStore = create<GraphState>()((set, get) => {
         newNodes.push({
           id: vid,
           type: "canvasNode",
-          position: { x: COL * 2 + 60, y: (existingVars + i) * ROW },
+          position: variationSlot(existingVars + i, existingVars + N, centerY),
           data: {
             kind: "variation",
             title: titleFromChanges(changes),
