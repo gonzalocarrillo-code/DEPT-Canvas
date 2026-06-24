@@ -92,7 +92,9 @@ function LayerView({
   onEndEdit: () => void;
 }) {
   const anim = animate ? animatedStyle(kf, playhead) : {};
-  const draggable = !animate && !layer.locked;
+  // Editable in both design AND video modes — only block while the animation plays
+  // (so a drag doesn't fight the keyframed transform) or when the layer is locked.
+  const draggable = !layer.locked && !playing;
   const hue = layer.hue ?? 265;
 
   const composed = composeEffects(layer.effects);
@@ -123,7 +125,7 @@ function LayerView({
     <div
       style={box}
       onPointerDown={onPointerDown}
-      onDoubleClick={layer.kind === "text" && !animate && !layer.locked ? onStartEdit : undefined}
+      onDoubleClick={layer.kind === "text" && !layer.locked && !playing ? onStartEdit : undefined}
       className={cn(
         selected && !playing && "outline outline-2 outline-offset-2 outline-primary",
       )}
@@ -258,7 +260,7 @@ export function CanvasStage() {
   const startDrag = (layer: Layer, e: ReactPointerEvent<HTMLDivElement>) => {
     select(layer.id);
     if (editingId && editingId !== layer.id) setEditingId(null);
-    if (animate || layer.locked || editingId === layer.id) return;
+    if (playing || layer.locked || editingId === layer.id) return;
     const art = artRef.current;
     if (!art) return;
     const rect = art.getBoundingClientRect();
@@ -365,7 +367,9 @@ export function CanvasStage() {
           : status === "loading"
             ? "Loading CE.SDK engine…"
             : animate
-              ? "Scrub or play to preview · keyframe craft (Tier-2 · Remotion render)"
+              ? playing
+                ? "Playing — pause to edit · keyframes in the timeline"
+                : "Paused — drag to move · double-click text · play to preview the animation"
               : "Drag to move · double-click text to edit · ⌘Z undo"}
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useNavigate, useParams } from "react-router";
-import { Undo2, Redo2, Download, Plus, Type, Image as ImageIcon, Film, Shapes, ChevronRight, Share2, Save, Check, Loader2, FileUp } from "lucide-react";
+import { Undo2, Redo2, Download, Plus, Type, Image as ImageIcon, Film, Shapes, ChevronRight, Share2, Save, Check, Loader2, FileUp, Lock } from "lucide-react";
 import { Button } from "@/ui/button";
 import { useEditorStore } from "./editorStore";
 import { useGraphStore } from "@/graph/store";
@@ -88,6 +88,9 @@ export function EditorToolbar() {
   };
   const navigate = useNavigate();
   const { projectId } = useParams();
+  // Once a design is pushed, its output kind (image|video) is fixed for consistency —
+  // the toggle locks. Start a new project to switch kinds. The scene data stays.
+  const pushed = useGraphStore((s) => Boolean(s.pushed[projectId ?? "demo"]));
   const addLayer = useEditorStore((s) => s.addLayer);
   const addShape = useEditorStore((s) => s.addShape);
   const [addOpen, setAddOpen] = useState(false);
@@ -175,17 +178,27 @@ export function EditorToolbar() {
 
         {importMsg && <span className="text-xs text-muted-foreground">{importMsg}</span>}
 
-        <div className="flex items-center rounded-lg border border-border bg-background p-0.5" title="Output kind — video reveals the animation timeline">
-          {OUTPUT_MODES.map(({ mode: m, label, Icon }) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              data-active={mode === m}
-              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-colors data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
-            >
-              <Icon className="size-3.5" /> {label}
-            </button>
-          ))}
+        <div
+          className="flex items-center rounded-lg border border-border bg-background p-0.5"
+          title={pushed ? "Output kind is locked after pushing — start a new project to switch" : "Output kind — video reveals the animation timeline"}
+        >
+          {OUTPUT_MODES.map(({ mode: m, label, Icon }) => {
+            const active = mode === m;
+            // After push the kind is fixed: only the active button shows, locked.
+            if (pushed && !active) return null;
+            return (
+              <button
+                key={m}
+                onClick={() => !pushed && setMode(m)}
+                data-active={active}
+                disabled={pushed}
+                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-colors data-[active=true]:bg-accent data-[active=true]:text-accent-foreground disabled:cursor-default"
+              >
+                <Icon className="size-3.5" /> {label}
+                {pushed && <Lock className="size-2.5 text-muted-foreground" />}
+              </button>
+            );
+          })}
         </div>
       </div>
 

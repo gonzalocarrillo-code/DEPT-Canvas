@@ -22,6 +22,7 @@ import {
 import type { CanvasNodeData, LayerKindTag } from "../types";
 import { kindInfo } from "../types";
 import { useGraphStore, splitValues } from "../store";
+import { useSkillsStore } from "@/skills/skills";
 import { cn } from "@/lib/utils";
 
 const layerIcon: Record<LayerKindTag, typeof Type> = {
@@ -60,6 +61,8 @@ function DesignNode({ id, data, selected }: { id: string; data: CanvasNodeData; 
   const pid = projectId ?? "demo";
   const addVariation = useGraphStore((s) => s.addVariation);
   const approveAll = useGraphStore((s) => s.approveAll);
+  const updateNodeData = useGraphStore((s) => s.updateNodeData);
+  const skills = useSkillsStore((s) => s.skills);
   // Select the stable nodes reference and derive in the body — a selector that
   // returns a new array each render breaks useSyncExternalStore (React #185).
   const allNodes = useGraphStore((s) => s.nodes);
@@ -110,6 +113,22 @@ function DesignNode({ id, data, selected }: { id: string; data: CanvasNodeData; 
           master · single source of truth
         </span>
       </div>
+
+      <label className="mt-2 flex items-center gap-1.5 px-3" title="MD skill — scopes the AI for every variation fanned from this design">
+        <Sparkles className="size-3 shrink-0 text-primary" />
+        <select
+          value={(data.skillId as string) ?? ""}
+          onChange={(e) => updateNodeData(id, { skillId: e.target.value || null })}
+          className="nodrag min-w-0 flex-1 rounded border border-border bg-background px-1.5 py-1 text-[11px] text-foreground outline-none focus:border-primary/60"
+        >
+          <option value="">No skill</option>
+          {skills.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <div className="flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground">
         <span className="font-mono">{layerCount} layers</span>
@@ -253,6 +272,7 @@ function VariationNode({ id, data, selected }: { id: string; data: CanvasNodeDat
         approved ? "border-success/60" : selected ? "border-primary/70 ring-2 ring-primary/30" : "border-border",
         rejected && "opacity-45",
       )}
+      style={!selected && !approved && !rejected ? { borderColor: `hsl(${hue} 40% 40% / 0.55)` } : undefined}
     >
       <Handle type="target" position={Position.Left} />
 

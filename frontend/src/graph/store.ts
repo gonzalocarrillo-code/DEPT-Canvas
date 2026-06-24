@@ -150,6 +150,18 @@ export const useGraphStore = create<GraphState>()((set, get) => {
       .catch(() => render(variationId, composePrompt(changes, skillBody), false, 900));
   };
 
+  // Re-pack ALL variation nodes into the deterministic grid so they never overlap,
+  // even across repeated fan-outs (a fresh fan-out would otherwise restack at index 0).
+  const reflowVariations = (centerY: number) => {
+    const ids = get().nodes.filter((n) => n.data.kind === "variation").map((n) => n.id);
+    const total = ids.length;
+    set({
+      nodes: get().nodes.map((n) =>
+        n.data.kind === "variation" ? { ...n, position: variationSlot(ids.indexOf(n.id), total, centerY) } : n,
+      ),
+    });
+  };
+
   return {
     projectId: null,
     nodes: [],
@@ -321,10 +333,12 @@ export const useGraphStore = create<GraphState>()((set, get) => {
           data: { kind: "variation", title: "Variation", status: "idle", outputKind, hue: hueFor(existingVars), changes: [], approval: "pending", axisIndex: 0 },
         };
         set((s) => ({ nodes: [...s.nodes, node] }));
+        reflowVariations(centerY);
         set(cache(get().projectId, get().nodes, get().edges));
         return vid;
       }
 
+      const skillId = (design.data.skillId as string | null) ?? null;
       const N = Math.min(MAX_VARIATIONS, Math.max(...layerNodes.map((n) => splitValues(n.data.change as string).length)));
       const newNodes: CanvasNode[] = [];
       const newEdges: CanvasEdge[] = [];
@@ -353,6 +367,7 @@ export const useGraphStore = create<GraphState>()((set, get) => {
             changes,
             approval: "pending",
             axisIndex: i,
+            skillId,
           },
         });
         layerNodes.forEach((n) => {
@@ -362,7 +377,8 @@ export const useGraphStore = create<GraphState>()((set, get) => {
         jobs.push({ vid, changes });
       }
       set((s) => ({ nodes: [...s.nodes, ...newNodes], edges: [...s.edges, ...newEdges] }));
-      const skillBody = useSkillsStore.getState().getSkill(null)?.body;
+      reflowVariations(centerY);
+      const skillBody = useSkillsStore.getState().getSkill(skillId)?.body;
       getAiStatus()
         .then((st) => jobs.forEach((j, idx) => render(j.vid, composePrompt(j.changes, skillBody), st.configured, 700 + idx * 180)))
         .catch(() => jobs.forEach((j, idx) => render(j.vid, composePrompt(j.changes, skillBody), false, 700 + idx * 180)));

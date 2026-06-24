@@ -133,6 +133,24 @@ describe("layer-node variation model", () => {
     expect(bgChanges).toEqual(["neutral studio backdrop", "neutral studio backdrop"]);
   });
 
+  it("variations never overlap, even across repeated fan-outs (reflowed into the grid)", () => {
+    setChange("bg", "a\nb\nc");
+    useGraphStore.getState().addVariation("design"); // 3 variations
+    setChange("headline", "x\ny");
+    useGraphStore.getState().addVariation("design"); // +3 more (max value count) → 6 total
+    const vs = variations();
+    expect(vs.length).toBe(6);
+    const slots = vs.map((v) => `${Math.round(v.position.x)},${Math.round(v.position.y)}`);
+    expect(new Set(slots).size).toBe(vs.length); // every variation occupies a distinct slot
+  });
+
+  it("a chosen MD skill rides onto each fanned variation", () => {
+    useGraphStore.getState().updateNodeData("design", { skillId: "meta-ads" });
+    setChange("bg", "one\ntwo");
+    useGraphStore.getState().addVariation("design");
+    expect(variations().every((v) => v.data.skillId === "meta-ads")).toBe(true);
+  });
+
   it("creating a variation is undoable", () => {
     const before = useGraphStore.getState().nodes.length;
     setChange("bg", "x");

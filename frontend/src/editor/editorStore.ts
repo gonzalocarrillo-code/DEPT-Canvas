@@ -221,13 +221,18 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     if (s.sceneId && s.dirty) useGraphStore.getState().markSetStale(s.sceneId);
     const locked = Boolean(seed?.locked);
     const cached = cache[sceneId];
+    // Opening a video scene: select a keyframed layer so the timeline shows keyframes.
+    const animateMode = (seed?.mode ?? s.mode) === "animate";
     if (cached) {
+      const kfPick = animateMode
+        ? cached.layers.find((l) => Object.keys(cached.keyframes[l.id] ?? {}).length > 0)?.id
+        : undefined;
       set({
         sceneId,
         sceneCache: cache,
         layers: cached.layers,
         keyframes: cached.keyframes,
-        selectedId: cached.layers[0]?.id ?? null,
+        selectedId: kfPick ?? cached.layers[0]?.id ?? null,
         selectedKeyframe: null,
         playhead: 0,
         playing: false,
@@ -268,7 +273,19 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       });
     }
   },
-  setMode: (mode) => set({ mode }),
+  setMode: (mode) => {
+    set({ mode });
+    // Entering video: make keyframes discoverable — if the selected layer has none,
+    // select the first layer that does, so the timeline shows real keyframes.
+    if (mode === "animate") {
+      const { selectedId, keyframes, layers } = get();
+      const has = (id: string | null) => !!id && Object.keys(keyframes[id] ?? {}).length > 0;
+      if (!has(selectedId)) {
+        const firstAnimated = layers.find((l) => has(l.id));
+        if (firstAnimated) set({ selectedId: firstAnimated.id, selectedKeyframe: null });
+      }
+    }
+  },
   setFormat: (format) => set({ format }),
   select: (selectedId) => set({ selectedId, selectedKeyframe: null, histTag: null }),
   updateLayer: (id, patch) => {
