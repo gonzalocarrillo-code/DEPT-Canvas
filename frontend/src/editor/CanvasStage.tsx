@@ -101,7 +101,9 @@ function LayerView({
   const filters: string[] = composed.filter ? [composed.filter] : [];
   if (animate && playing && layer.motionBlur) {
     const sp = motionSpeed(kf, playhead);
-    if (sp > 0.02) filters.push(`blur(${Math.min(sp * 50, 14).toFixed(1)}px)`);
+    const amt = layer.motionBlurAmount ?? 0.4; // calmer default; editable in the inspector
+    const px = Math.min(sp * 22 * amt, 8);
+    if (px > 0.4) filters.push(`blur(${px.toFixed(1)}px)`);
   }
 
   const box: CSSProperties = {

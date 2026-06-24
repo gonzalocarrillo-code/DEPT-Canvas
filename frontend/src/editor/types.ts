@@ -57,6 +57,8 @@ export interface Layer {
   // effects
   blendMode?: string;
   motionBlur?: boolean;
+  /** Motion-blur strength 0..1 (default 0.4). Editable; only applies in video playback. */
+  motionBlurAmount?: number;
   effects?: EffectInstance[];
 }
 

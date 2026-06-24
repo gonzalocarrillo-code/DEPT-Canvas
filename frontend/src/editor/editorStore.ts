@@ -90,6 +90,7 @@ interface EditorState {
   markSaved: () => void;
   publishManifest: () => void;
   getManifest: () => LayerManifestEntry[];
+  getScene: () => { layers: Layer[]; keyframes: Record<string, LayerKeyframes>; durationS: number };
   undo: () => void;
   redo: () => void;
   load: (sceneId: string, seed?: SceneSeed) => void;
@@ -176,10 +177,20 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   // node + its layer nodes), so the graph sees this exact design — lock in editor →
   // locked layer node in graph. Only the master design ("design") mirrors a manifest.
   publishManifest: () => {
-    if (get().sceneId !== "design") return;
-    useGraphStore.getState().syncManifest(manifestOf(get().layers));
+    const s = get();
+    if (s.sceneId !== "design") return;
+    useGraphStore.getState().syncManifest(manifestOf(s.layers), {
+      layers: clone(s.layers),
+      keyframes: clone(s.keyframes),
+      durationS: s.durationS,
+    });
   },
   getManifest: () => manifestOf(get().layers),
+  // The full scene for the graph to render a live composed preview (and animate it).
+  getScene: () => {
+    const s = get();
+    return { layers: clone(s.layers), keyframes: clone(s.keyframes), durationS: s.durationS };
+  },
   undo: () => {
     const s = get();
     if (!s.past.length) return;

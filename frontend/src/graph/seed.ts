@@ -1,6 +1,6 @@
 import type { CanvasNode, CanvasEdge, LayerChange, LayerManifestEntry } from "./types";
 import { kindInfo } from "./types";
-import { defaultLayerManifest } from "../editor/scene";
+import { defaultLayerManifest, sampleScene } from "../editor/scene";
 import { layerCenterY, layoutLayer, variationSlot } from "./layout";
 
 export interface DesignInput {
@@ -9,6 +9,10 @@ export interface DesignInput {
   layers: LayerManifestEntry[];
   /** Optional pre-authored layer changes (layerId → instruction). */
   changes?: Record<string, string>;
+  /** Full scene + keyframes so the graph can render a live (animated) preview. */
+  scene?: unknown;
+  keyframes?: unknown;
+  durationS?: number;
 }
 
 // The canonical graph for a pushed design: a design master + one node per layer.
@@ -28,6 +32,9 @@ export function buildDesignGraph(design: DesignInput): { nodes: CanvasNode[]; ed
       hue: kindInfo.design.hue,
       outputKind,
       layers,
+      scene: design.scene,
+      sceneKeyframes: design.keyframes,
+      durationS: design.durationS,
     },
   };
   const nodes: CanvasNode[] = [designNode];
@@ -66,6 +73,9 @@ export function seedGraph(_projectId: string): { nodes: CanvasNode[]; edges: Can
     title: "Fall / Winter — Master",
     outputKind: "image",
     layers: manifest,
+    scene: sampleScene(),
+    keyframes: {},
+    durationS: 5,
     changes: {
       headline: "translate the headline to Chinese\ntranslate the headline to Spanish",
       bg: "swap the backdrop for a Chinese-flag-inspired scene\nswap the backdrop for a Spanish-flag-inspired scene",

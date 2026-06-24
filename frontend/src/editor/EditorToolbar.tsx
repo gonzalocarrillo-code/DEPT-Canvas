@@ -254,10 +254,14 @@ export function EditorToolbar() {
           size="sm"
           onClick={() => {
             const s = useEditorStore.getState();
+            const scene = s.getScene();
             pushToGraph(projectId ?? "demo", {
               title: s.sceneTitle,
               outputKind: s.mode === "animate" ? "video" : "image",
               layers: s.getManifest(),
+              scene: scene.layers,
+              keyframes: scene.keyframes,
+              durationS: scene.durationS,
             });
             navigate(`/project/${projectId ?? "demo"}/graph`);
           }}

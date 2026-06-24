@@ -28,6 +28,9 @@ export interface LayerChange {
   layerName: string;
   layerKind: LayerKindTag;
   change: string;
+  /** Per-layer MD skill scoping this change's generation. */
+  skillId?: string | null;
+  skillName?: string;
 }
 
 export interface CanvasNodeData {
@@ -41,6 +44,12 @@ export interface CanvasNodeData {
   outputKind?: "image" | "video";
   // ── design (the master) ──
   layers?: LayerManifestEntry[];
+  /** Full scene (layer geometry/text/colors) so the graph can render a live preview. */
+  scene?: unknown;
+  /** Keyframes by layer id, for animating the preview. */
+  sceneKeyframes?: unknown;
+  /** Animation duration (seconds) for the preview loop. */
+  durationS?: number;
   /** Number of variation nodes branched off this design. */
   count?: number;
   // ── layer node ──

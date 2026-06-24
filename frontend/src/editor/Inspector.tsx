@@ -485,6 +485,24 @@ function EffectsSection({ layer, onChange }: { layer: Layer; onChange: (p: Parti
           className="size-3.5 accent-[var(--color-primary)]"
         />
       </Row>
+      {layer.motionBlur && (
+        <Row label="Blur amount">
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={layer.motionBlurAmount ?? 0.4}
+              onChange={(e) => onChange({ motionBlurAmount: Number(e.target.value) })}
+              className="w-24 accent-[var(--color-primary)]"
+            />
+            <span className="w-8 text-right font-mono text-[11px] text-muted-foreground">
+              {Math.round((layer.motionBlurAmount ?? 0.4) * 100)}
+            </span>
+          </div>
+        </Row>
+      )}
     </Section>
   );
 }

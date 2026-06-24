@@ -151,6 +151,23 @@ describe("layer-node variation model", () => {
     expect(variations().every((v) => v.data.skillId === "meta-ads")).toBe(true);
   });
 
+  it("syncManifest removes a layer node + its edges when a layer is deleted in the editor", () => {
+    setChange("headline", "x");
+    useGraphStore.getState().addVariation("design"); // wires layer-headline → a variation
+    expect(node("layer-headline")).toBeTruthy();
+    // editor deletes the Headline layer → manifest no longer has it
+    useGraphStore.getState().syncManifest(LAYERS.filter((l) => l.id !== "headline"));
+    expect(node("layer-headline")).toBeFalsy(); // node gone (truly linked)
+    expect(useGraphStore.getState().edges.some((e) => e.source === "layer-headline" || e.target === "layer-headline")).toBe(false);
+  });
+
+  it("syncManifest adds a layer node (+ design edge) when a layer is added in the editor", () => {
+    const plus: LayerManifestEntry[] = [...LAYERS, { id: "badge", name: "Badge", kind: "graphic", locked: false }];
+    useGraphStore.getState().syncManifest(plus);
+    expect(node("layer-badge")).toBeTruthy();
+    expect(useGraphStore.getState().edges.some((e) => e.source === "design" && e.target === "layer-badge")).toBe(true);
+  });
+
   it("creating a variation is undoable", () => {
     const before = useGraphStore.getState().nodes.length;
     setChange("bg", "x");

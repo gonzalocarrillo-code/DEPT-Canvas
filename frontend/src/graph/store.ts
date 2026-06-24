@@ -13,7 +13,7 @@ import { seedGraph, buildDesignGraph, type DesignInput } from "./seed";
 import { hueFor } from "../batch/batchStore";
 import { getAiStatus, requestGenerate } from "../api/ai";
 import { useSkillsStore } from "../skills/skills";
-import { MAX_VARIATIONS, layerCenterY, variationSlot } from "./layout";
+import { MAX_VARIATIONS, layerCenterY, layoutLayer, variationSlot } from "./layout";
 
 // Demo projects from the dashboard open with a populated graph; everything else is
 // "editor-first" and stays gated until the user pushes a design from the editor.
@@ -43,7 +43,9 @@ function titleFromChanges(changes: LayerChange[]): string {
 // One generation prompt for the whole composed variation: the design with each
 // connected layer's change applied. The MD skill (if any) scopes the generation.
 function composePrompt(changes: LayerChange[], skillBody?: string): string {
-  const lines = changes.map((c) => `- ${c.layerName} (${c.layerKind}): ${c.change}`).join("\n");
+  const lines = changes
+    .map((c) => `- ${c.layerName} (${c.layerKind}): ${c.change}${c.skillName ? ` [skill: ${c.skillName}]` : ""}`)
+    .join("\n");
   const skill = skillBody ? `\n\n--- Apply this skill ---\n${skillBody}` : "";
   return `Produce an on-brand variation of the master design with these layer changes (all other layers, and every locked layer, unchanged):\n${lines}${skill}`;
 }
@@ -77,7 +79,7 @@ interface GraphState {
   pasteNodes: () => void;
   // editor → graph
   pushToGraph: (projectId: string, design: DesignInput) => void;
-  syncManifest: (manifest: LayerManifestEntry[]) => void;
+  syncManifest: (manifest: LayerManifestEntry[], scene?: { layers: unknown; keyframes: unknown; durationS: number }) => void;
   // variations
   addVariation: (designId: string) => string | null;
   composeVariation: (variationId: string) => void;
@@ -122,21 +124,26 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     const v = get().nodes.find((n) => n.id === variationId);
     if (!v || v.data.kind !== "variation") return;
     const axisIndex = (v.data.axisIndex as number) ?? 0;
+    const designSkillId = (get().nodes.find((n) => n.id === "design")?.data.skillId as string | null) ?? null;
+    const skillsStore = useSkillsStore.getState();
     const sourceIds = new Set(get().edges.filter((e) => e.target === variationId).map((e) => e.source));
     const changes: LayerChange[] = get()
       .nodes.filter((n) => sourceIds.has(n.id) && n.data.kind === "layer" && !n.data.locked)
-      .map((n) => {
+      .map((n): LayerChange | null => {
         const values = splitValues(n.data.change as string);
         if (!values.length) return null;
+        const sid = (n.data.skillId as string | null) ?? designSkillId;
         return {
           layerId: n.data.layerId as string,
           layerName: (n.data.layerName as string) ?? (n.data.title as string),
           layerKind: (n.data.layerKind as LayerChange["layerKind"]) ?? "image",
           change: values[Math.min(axisIndex, values.length - 1)],
+          skillId: sid,
+          skillName: sid ? skillsStore.getSkill(sid)?.name : undefined,
         };
       })
       .filter((c): c is LayerChange => c !== null);
-    const skillBody = useSkillsStore.getState().getSkill((v.data.skillId as string | null) ?? null)?.body;
+    const skillBody = skillsStore.getSkill((v.data.skillId as string | null) ?? designSkillId)?.body;
     get().updateNodeData(variationId, {
       changes,
       title: titleFromChanges(changes),
@@ -287,20 +294,63 @@ export const useGraphStore = create<GraphState>()((set, get) => {
         clipboard: [],
       }));
     },
-    // Live mirror of editor lock/identity onto the design + layer nodes (lock in
-    // editor → locked in graph), without rebuilding variations.
-    syncManifest: (manifest) => {
-      if (!get().nodes.some((n) => n.id === "design")) return;
-      set({
-        nodes: get().nodes.map((n) => {
-          if (n.id === "design") return { ...n, data: { ...n.data, layers: manifest } };
+    // Full mirror of the editor onto the graph: lock/rename existing layer nodes,
+    // ADD nodes for new layers, REMOVE nodes (+ their edges) for deleted layers, and
+    // refresh the design's live-preview scene. This is what makes the two truly linked
+    // — deleting a layer in the editor removes its node here.
+    syncManifest: (manifest, scene) => {
+      const design = get().nodes.find((n) => n.id === "design");
+      if (!design) return;
+      const outputKind = (design.data.outputKind as "image" | "video") ?? "image";
+      const manifestIds = new Set(manifest.map((m) => m.id));
+      const layerNodes = get().nodes.filter((n) => n.data.kind === "layer");
+      const existingIds = new Set(layerNodes.map((n) => n.data.layerId as string));
+      const removedNodeIds = new Set(
+        layerNodes.filter((n) => !manifestIds.has(n.data.layerId as string)).map((n) => n.id),
+      );
+
+      // Update design + existing layer nodes; drop removed layer nodes.
+      let nodes = get()
+        .nodes.filter((n) => !removedNodeIds.has(n.id))
+        .map((n) => {
+          if (n.id === "design") {
+            return {
+              ...n,
+              position: { ...n.position, y: layerCenterY(manifest.length) },
+              data: {
+                ...n.data,
+                layers: manifest,
+                ...(scene ? { scene: scene.layers, sceneKeyframes: scene.keyframes, durationS: scene.durationS } : {}),
+              },
+            };
+          }
           if (n.data.kind === "layer" && n.data.layerId) {
             const m = manifest.find((x) => x.id === n.data.layerId);
-            if (m) return { ...n, data: { ...n.data, layerName: m.name, title: m.name, layerKind: m.kind, locked: m.locked } };
+            const idx = manifest.findIndex((x) => x.id === n.data.layerId);
+            if (m) return { ...n, position: layoutLayer(idx), data: { ...n.data, layerName: m.name, title: m.name, layerKind: m.kind, locked: m.locked } };
           }
           return n;
-        }),
+        });
+
+      // Add nodes (+ design→layer edges) for layers created in the editor.
+      const newEdges: CanvasEdge[] = [];
+      manifest.forEach((m, idx) => {
+        if (existingIds.has(m.id)) return;
+        const id = `layer-${m.id}`;
+        nodes.push({
+          id,
+          type: "canvasNode",
+          position: layoutLayer(idx),
+          data: { kind: "layer", title: m.name, status: "done", outputKind, layerId: m.id, layerName: m.name, layerKind: m.kind, locked: m.locked, change: "" },
+        });
+        newEdges.push({ id: `e-design-${id}`, source: "design", target: id });
       });
+
+      const edges = [
+        ...get().edges.filter((e) => !removedNodeIds.has(e.source) && !removedNodeIds.has(e.target)),
+        ...newEdges,
+      ];
+      set({ nodes, edges });
       set(cache(get().projectId, get().nodes, get().edges));
     },
 
@@ -338,7 +388,8 @@ export const useGraphStore = create<GraphState>()((set, get) => {
         return vid;
       }
 
-      const skillId = (design.data.skillId as string | null) ?? null;
+      const designSkillId = (design.data.skillId as string | null) ?? null;
+      const skillsStore = useSkillsStore.getState();
       const N = Math.min(MAX_VARIATIONS, Math.max(...layerNodes.map((n) => splitValues(n.data.change as string).length)));
       const newNodes: CanvasNode[] = [];
       const newEdges: CanvasEdge[] = [];
@@ -346,11 +397,15 @@ export const useGraphStore = create<GraphState>()((set, get) => {
       for (let i = 0; i < N; i++) {
         const changes: LayerChange[] = layerNodes.map((n) => {
           const values = splitValues(n.data.change as string);
+          // Per-layer skill (falls back to the design-level default).
+          const sid = (n.data.skillId as string | null) ?? designSkillId;
           return {
             layerId: n.data.layerId as string,
             layerName: (n.data.layerName as string) ?? (n.data.title as string),
             layerKind: (n.data.layerKind as LayerChange["layerKind"]) ?? "image",
             change: values[Math.min(i, values.length - 1)],
+            skillId: sid,
+            skillName: sid ? skillsStore.getSkill(sid)?.name : undefined,
           };
         });
         const vid = `variation-${makeId()}`;
@@ -367,7 +422,7 @@ export const useGraphStore = create<GraphState>()((set, get) => {
             changes,
             approval: "pending",
             axisIndex: i,
-            skillId,
+            skillId: designSkillId,
           },
         });
         layerNodes.forEach((n) => {
@@ -378,7 +433,7 @@ export const useGraphStore = create<GraphState>()((set, get) => {
       }
       set((s) => ({ nodes: [...s.nodes, ...newNodes], edges: [...s.edges, ...newEdges] }));
       reflowVariations(centerY);
-      const skillBody = useSkillsStore.getState().getSkill(skillId)?.body;
+      const skillBody = skillsStore.getSkill(designSkillId)?.body;
       getAiStatus()
         .then((st) => jobs.forEach((j, idx) => render(j.vid, composePrompt(j.changes, skillBody), st.configured, 700 + idx * 180)))
         .catch(() => jobs.forEach((j, idx) => render(j.vid, composePrompt(j.changes, skillBody), false, 700 + idx * 180)));

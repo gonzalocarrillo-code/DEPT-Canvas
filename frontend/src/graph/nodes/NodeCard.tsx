@@ -1,6 +1,8 @@
-import { memo } from "react";
+import { memo, useEffect, useState, type CSSProperties } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { useNavigate, useParams } from "react-router";
+import { animatedStyle } from "@/editor/animation";
+import type { Layer, LayerKeyframes } from "@/editor/types";
 import {
   Image as ImageIcon,
   Type,
@@ -176,6 +178,7 @@ function LayerNode({ id, data, selected }: { id: string; data: CanvasNodeData; s
   const updateNodeData = useGraphStore((s) => s.updateNodeData);
   const composeVariation = useGraphStore((s) => s.composeVariation);
   const edges = useGraphStore((s) => s.edges);
+  const skills = useSkillsStore((s) => s.skills);
   const navigate = useNavigate();
   const { projectId } = useParams();
   const pid = projectId ?? "demo";
@@ -242,9 +245,111 @@ function LayerNode({ id, data, selected }: { id: string; data: CanvasNodeData; s
                 <PenLine className="size-3" />
               </button>
             </div>
+            <select
+              value={(data.skillId as string) ?? ""}
+              onChange={(e) => updateNodeData(id, { skillId: e.target.value || null })}
+              onBlur={recomposeConnected}
+              title="MD skill for THIS layer's variations"
+              className="nodrag mt-1.5 w-full rounded border border-border bg-background px-1.5 py-1 text-[10px] text-foreground outline-none focus:border-primary/60"
+            >
+              <option value="">Layer skill — none</option>
+              {skills.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// A live, scaled render of the design's scene with this variation's changes applied.
+// For video it loops the keyframe animation — a real working preview, no API key.
+function ScenePreview({
+  scene,
+  keyframes,
+  durationS,
+  changes,
+  animate,
+}: {
+  scene: Layer[];
+  keyframes: Record<string, LayerKeyframes> | undefined;
+  durationS: number;
+  changes: { layerId: string; change: string }[];
+  animate: boolean;
+}) {
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    if (!animate) return;
+    let raf = 0;
+    let last = performance.now();
+    const loop = (now: number) => {
+      const dt = (now - last) / 1000;
+      last = now;
+      setT((p) => (p + dt >= (durationS || 5) ? 0 : p + dt));
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [animate, durationS]);
+
+  const changeOf = (lid: string) => changes.find((c) => c.layerId === lid);
+
+  return (
+    <div className="absolute inset-0 overflow-hidden" style={{ containerType: "size" }}>
+      {scene
+        .filter((l) => l.visible)
+        .map((l) => {
+          const anim = animate ? animatedStyle(keyframes?.[l.id], t) : {};
+          const ch = changeOf(l.id);
+          const base: CSSProperties = {
+            position: "absolute",
+            left: `${l.x * 100}%`,
+            top: `${l.y * 100}%`,
+            width: `${l.w * 100}%`,
+            height: `${l.h * 100}%`,
+            transform: `rotate(${l.rotation}deg) ${anim.transform ?? ""}`,
+            opacity: (l.opacity ?? 1) * (typeof anim.opacity === "number" ? anim.opacity : 1),
+          };
+          if (l.kind === "text") {
+            return (
+              <div
+                key={l.id}
+                style={{
+                  ...base,
+                  color: l.color ?? "#fff",
+                  fontSize: `${(l.fontSize ?? 0.05) * 100}cqw`,
+                  fontWeight: l.fontWeight,
+                  textAlign: l.align,
+                  lineHeight: l.lineHeight,
+                  letterSpacing: `${l.letterSpacing ?? 0}em`,
+                  fontFamily: l.fontFamily,
+                  overflow: "hidden",
+                  outline: ch ? "1px solid hsl(265 80% 70% / 0.7)" : undefined,
+                }}
+              >
+                {ch ? ch.change : l.text}
+              </div>
+            );
+          }
+          if (l.kind === "shape") {
+            return <div key={l.id} style={{ ...base, background: l.fill, borderRadius: l.radius }} />;
+          }
+          // image
+          const hue = (l.hue ?? 265) + (ch ? 60 : 0);
+          return (
+            <div key={l.id} style={{ ...base, overflow: "hidden", borderRadius: 2, outline: ch ? "1px solid hsl(265 80% 70% / 0.7)" : undefined }}>
+              {l.src ? (
+                <img src={l.src} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full" style={{ background: `radial-gradient(130% 130% at 0% 0%, hsl(${hue} 55% 32%), hsl(${hue} 45% 12%))` }} />
+              )}
+            </div>
+          );
+        })}
     </div>
   );
 }
@@ -257,6 +362,12 @@ function VariationNode({ id, data, selected }: { id: string; data: CanvasNodeDat
   const approveVariant = useGraphStore((s) => s.approveVariant);
   const rejectVariant = useGraphStore((s) => s.rejectVariant);
   const composeVariation = useGraphStore((s) => s.composeVariation);
+  // The design's full scene drives a live composed preview (read stable nodes ref).
+  const allNodes = useGraphStore((s) => s.nodes);
+  const design = allNodes.find((n) => n.id === "design");
+  const scene = design?.data.scene as Layer[] | undefined;
+  const sceneKf = design?.data.sceneKeyframes as Record<string, LayerKeyframes> | undefined;
+  const durationS = (design?.data.durationS as number) ?? 5;
 
   const hue = data.hue ?? 175;
   const busy = data.status === "generating" || data.status === "queued";
@@ -277,17 +388,22 @@ function VariationNode({ id, data, selected }: { id: string; data: CanvasNodeDat
       <Handle type="target" position={Position.Left} />
 
       <div
-        className="relative grid h-24 place-items-center"
-        style={{ background: `radial-gradient(130% 130% at 0% 0%, hsl(${hue} 55% 28%), hsl(${hue} 45% 10%))` }}
+        className="relative h-24 overflow-hidden"
+        style={{ background: `radial-gradient(130% 130% at 0% 0%, hsl(${hue} 55% 18%), hsl(${hue} 45% 8%))` }}
       >
+        {scene && scene.length ? (
+          <ScenePreview scene={scene} keyframes={sceneKf} durationS={durationS} changes={changes} animate={isVideo} />
+        ) : (
+          <div className="absolute inset-0 opacity-60" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)", backgroundSize: "13px 13px" }} />
+        )}
+        {/* Real generated image sits on top once the AI gateway is configured. */}
         {data.imageUrl && <img src={data.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />}
-        <div className="absolute inset-0 opacity-60" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)", backgroundSize: "13px 13px" }} />
         {isVideo && !busy && (
-          <span className="relative z-10 grid size-8 place-items-center rounded-full bg-background/55 text-foreground backdrop-blur-sm">
-            <Play className="size-3.5" />
+          <span className="absolute bottom-1.5 right-1.5 z-10 grid size-5 place-items-center rounded-full bg-background/55 text-foreground backdrop-blur-sm">
+            <Play className="size-2.5" />
           </span>
         )}
-        <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded bg-background/60 px-1 py-0.5 text-[8px] text-muted-foreground backdrop-blur-sm">
+        <span className="absolute left-1.5 top-1.5 z-10 inline-flex items-center gap-1 rounded bg-background/60 px-1 py-0.5 text-[8px] text-muted-foreground backdrop-blur-sm">
           {isVideo ? <Film className="size-2" /> : <ImageIcon className="size-2" />} {data.outputKind ?? "image"}
         </span>
         {busy && (

@@ -12,12 +12,14 @@ export const VAR_X0 = 760; // first variation column; layer right edge ~584 → 
 export const COL_PITCH = 300; // variation column stride (224 card + 76 gutter)
 export const VAR_ROW = 180; // variation row stride (~150 card + 30 gutter)
 export const ROW = 132; // layer-column pitch (unchanged — only affects the layer band + design colY)
-export const MAX_COLS = 6; // grid width cap
-export const MAX_VARIATIONS = 24; // cost/perf ceiling on a single fan-out
+export const MAX_COLS = 10; // grid width cap — variations spread wide to the right
+export const MAX_VARIATIONS = 200; // generous ceiling; make as many as requested
 
-/** Near-square column count for `total` variations, capped at MAX_COLS. */
+/** Column count for `total` variations — biased WIDE (extends right), capped at
+ * MAX_COLS, and never more columns than there are variations. */
 export function varCols(total: number): number {
-  return Math.max(1, Math.min(MAX_COLS, Math.ceil(Math.sqrt(Math.max(1, total)))));
+  const n = Math.max(1, total);
+  return Math.max(1, Math.min(MAX_COLS, n, Math.ceil(Math.sqrt(n * 1.8))));
 }
 
 /**
